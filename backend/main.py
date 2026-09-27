@@ -3,6 +3,7 @@ import uuid
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
+from sqlalchemy import Column, JSON
 import requests
 from requests.auth import HTTPBasicAuth
 
@@ -45,6 +46,19 @@ class ProjectSummary(SQLModel, table=True):
     overall_status: str
     summary_text: str
 
+class TicketQuality(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    ticket_id: int = Field(foreign_key="ticket.id")
+    quality_score: int
+    quality_level: str
+    implementation_readiness: str
+    criteria_scores: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    gaps: list = Field(default_factory=list, sa_column=Column(JSON))
+    recommendations: list = Field(default_factory=list, sa_column=Column(JSON))
+    ai_agent_ready: bool
+    
+    ticket: Optional["Ticket"] = Relationship(back_populates="quality")
+
 class Ticket(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     jira_id: str
@@ -56,6 +70,7 @@ class Ticket(SQLModel, table=True):
     resolution_date: str | None = Field(default=None)
     is_processed: bool = Field(default=False)
     analysis: Optional[AnalysisResult] = Relationship(back_populates="ticket")
+    quality: Optional["TicketQuality"] = Relationship(back_populates="ticket")
 
 @app.on_event("startup")
 def on_startup():
@@ -154,6 +169,7 @@ def get_tickets(session: Session = Depends(get_session)):
     for t in tickets:
         data = t.model_dump()
         data["analysis"] = t.analysis.model_dump() if t.analysis else None
+        data["quality"] = t.quality.model_dump() if t.quality else None
         data["link"] = f"{jira_base}/browse/{t.jira_id}"
         response.append(data)
     return response

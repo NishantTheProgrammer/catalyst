@@ -6,11 +6,12 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, List
 import json
-from main import engine, Ticket, AnalysisResult, ProjectSummary
+from main import engine, Ticket, AnalysisResult, ProjectSummary, TicketQuality
 
 class GraphState(TypedDict):
     tickets: List[Ticket]
     classifications: List[dict]
+    qualities: List[dict]
 
 # Load AI Model based on ENV vars
 openai_key = os.getenv("OPENAI_API_KEY")
@@ -84,14 +85,61 @@ def classify_defects(state: GraphState):
             )
             session.add(analysis)
             
-            db_ticket = session.get(Ticket, ticket.id)
-            if db_ticket:
-                db_ticket.is_processed = True
-                session.add(db_ticket)
+            # Note: We no longer set is_processed = True here, it happens in update_db so quality is finished first.
                 
             session.commit()
             
     return {"classifications": classifications}
+
+def assess_qualities(state: GraphState):
+    tickets = state.get("tickets", [])
+    if not tickets:
+        return {"qualities": []}
+        
+    qualities = []
+    with Session(engine) as session:
+        for ticket in tickets:
+            try:
+                prompt = f"""
+Evaluate the quality of this Jira ticket for a developer.
+Title: {ticket.title}
+Description: {ticket.description}
+
+Evaluate these 9 criteria (0 to max): Title Clarity (10), Problem Statement (15), Expected Behavior (15), Acceptance Criteria (20), Scope Definition (10), Technical Context (10), Reproducibility (5), Dependencies (5), AI Agent Readiness (10).
+
+Reply STRICTLY in this JSON format:
+{{"qualityScore": 85, "qualityLevel": "Good", "implementationReadiness": "Ready", "criteriaScores": {{"titleClarity": {{"score": 10, "maxScore": 10, "reason": "..."}}, "problemStatement": {{"score": 15, "maxScore": 15, "reason": "..."}}, "expectedBehavior": {{"score": 15, "maxScore": 15, "reason": "..."}}, "acceptanceCriteria": {{"score": 20, "maxScore": 20, "reason": "..."}}, "scopeDefinition": {{"score": 10, "maxScore": 10, "reason": "..."}}, "technicalContext": {{"score": 10, "maxScore": 10, "reason": "..."}}, "reproducibility": {{"score": 5, "maxScore": 5, "reason": "..."}}, "dependencies": {{"score": 5, "maxScore": 5, "reason": "..."}}, "aiAgentReadiness": {{"score": 10, "maxScore": 10, "reason": "..."}} }}, "gaps": [{{"issue": "...", "why": "...", "suggestion": "...", "priority": "..."}}], "recommendations": ["..."], "aiAgentReady": true}}
+"""
+                response = llm.invoke([HumanMessage(content=prompt)])
+                match = re.search(r'\{.*?\}', response.content, re.DOTALL)
+                clean_json = match.group(0) if match else response.content.strip('`').replace('json\n', '').strip()
+                res_data = json.loads(clean_json)
+                
+            except Exception as e:
+                print(f"Quality LLM Error: {e}")
+                res_data = {{
+                    "qualityScore": 65, "qualityLevel": "Fair", "implementationReadiness": "Needs Clarification",
+                    "criteriaScores": {{}},
+                    "gaps": [{{"issue": "Missing details", "why": "Hard to implement", "suggestion": "Add ACs", "priority": "High"}}],
+                    "recommendations": ["Improve description"],
+                    "aiAgentReady": False
+                }}
+                
+            qual = TicketQuality(
+                ticket_id=ticket.id,
+                quality_score=res_data.get("qualityScore", 65),
+                quality_level=res_data.get("qualityLevel", "Fair"),
+                implementation_readiness=res_data.get("implementationReadiness", "Needs Clarification"),
+                criteria_scores=res_data.get("criteriaScores", {{}}),
+                gaps=res_data.get("gaps", []),
+                recommendations=res_data.get("recommendations", []),
+                ai_agent_ready=res_data.get("aiAgentReady", False)
+            )
+            session.add(qual)
+            qualities.append(res_data)
+                
+        session.commit()
+    return {"qualities": qualities}
 
 def update_db(state: GraphState):
     tickets = state.get("tickets", [])
@@ -123,6 +171,14 @@ def update_db(state: GraphState):
     with Session(engine) as session:
         summary = ProjectSummary(overall_status=status, summary_text=text)
         session.add(summary)
+        
+        # Mark all tickets as processed since classification and quality are done
+        for t in tickets:
+            db_ticket = session.get(Ticket, t.id)
+            if db_ticket:
+                db_ticket.is_processed = True
+                session.add(db_ticket)
+                
         session.commit()
         
     return {"tickets": tickets}
@@ -131,11 +187,13 @@ def update_db(state: GraphState):
 workflow = StateGraph(GraphState)
 workflow.add_node("fetch_unprocessed", fetch_unprocessed)
 workflow.add_node("classify_defects", classify_defects)
+workflow.add_node("assess_qualities", assess_qualities)
 workflow.add_node("update_db", update_db)
 
 workflow.add_edge(START, "fetch_unprocessed")
 workflow.add_edge("fetch_unprocessed", "classify_defects")
-workflow.add_edge("classify_defects", "update_db")
+workflow.add_edge("classify_defects", "assess_qualities")
+workflow.add_edge("assess_qualities", "update_db")
 workflow.add_edge("update_db", END)
 
 app_graph = workflow.compile()
