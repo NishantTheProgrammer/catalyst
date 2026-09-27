@@ -38,11 +38,17 @@ def classify_defects(state: GraphState):
         try:
             prompt = f"Classify this Jira ticket into one category (Code defect, Data defect, Requirement gap, Environment issue). Title: {ticket.title}. Description: {ticket.description}. Reply in strictly JSON format: {{\"category\": \"...\", \"confidence\": 90, \"reason\": \"...\"}}"
             response = llm.invoke([HumanMessage(content=prompt)])
-            # Basic JSON parsing
-            clean_json = response.content.strip('`').replace('json\n', '')
+            import re
+            match = re.search(r'\{.*?\}', response.content, re.DOTALL)
+            if match:
+                clean_json = match.group(0)
+            else:
+                clean_json = response.content.strip('`').replace('json\n', '').strip()
+                
             res_data = json.loads(clean_json)
             classifications.append({"ticket_id": ticket.id, **res_data})
-        except Exception:
+        except Exception as e:
+            print(f"LLM Error: {e}")
             category = "Data defect" if "ETL" in ticket.title else "Code defect"
             if "legacy" in ticket.title.lower(): category = "Legacy behaviour"
             classifications.append({

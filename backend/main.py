@@ -100,11 +100,15 @@ def sync_jira_tickets(session: Session = Depends(get_session)):
         fields = issue.get("fields", {})
         title = fields.get("summary", "")
         description = fields.get("description") or "No description provided."
+        import re
         if isinstance(description, dict):
             # Parse ADF (Atlassian Document Format)
             description = extract_adf_text(description)
             if not description:
                 description = "No readable description found."
+        
+        # Clean up basic Jira Wiki markup (like "h3. ")
+        description = re.sub(r'h[1-6]\.\s*', '', description)
             
         status = fields.get("status", {}).get("name", "Unknown")
         
