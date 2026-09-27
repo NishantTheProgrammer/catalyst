@@ -47,6 +47,18 @@ def classify_defects(state: GraphState):
                     
                 res_data = json.loads(clean_json)
                 category = res_data.get("category", "Unknown")
+                
+                # Normalize category to fix small model hallucinations
+                valid_categories = ["Code", "Data", "Configuration", "Documentation", "Requirement", "Legacy"]
+                if category not in valid_categories:
+                    if "code" in category.lower(): category = "Code"
+                    elif "data" in category.lower(): category = "Data"
+                    elif "config" in category.lower(): category = "Configuration"
+                    elif "doc" in category.lower(): category = "Documentation"
+                    elif "req" in category.lower(): category = "Requirement"
+                    elif "legacy" in category.lower(): category = "Legacy"
+                    else: category = "Code" # Fallback
+                
                 confidence = res_data.get("confidence", 0)
                 reason = res_data.get("reason", "")
             except Exception as e:
