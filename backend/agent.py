@@ -74,29 +74,46 @@ def analyze_tickets(state: GraphState):
             session.add(analysis)
             
             # --- 2. Assess Quality ---
+            # --- 2. Assess Quality ---
             try:
                 prompt2 = f"""
-Evaluate the quality of this Jira ticket for a developer.
-Title: {ticket.title}
-Description: {ticket.description}
+Evaluate this Jira ticket. Title: {ticket.title}. Description: {ticket.description}
 
-Evaluate ONLY 3 criteria: Clarity (30), Completeness (40), Context (30).
-Keep reasoning very brief (1 sentence). Output ONLY valid JSON.
+Evaluate 3 criteria: Clarity (out of 30), Completeness (out of 40), Context (out of 30).
+Keep reasoning brief. You MUST reply ONLY with valid JSON, flat structure.
 
-Reply STRICTLY in this JSON format:
-{{"qualityScore": 85, "qualityLevel": "Good", "implementationReadiness": "Ready", "criteriaScores": {{"clarity": {{"score": 25, "maxScore": 30, "reason": "..."}}, "completeness": {{"score": 35, "maxScore": 40, "reason": "..."}}, "context": {{"score": 25, "maxScore": 30, "reason": "..."}} }}, "gaps": [{{"issue": "...", "why": "...", "suggestion": "...", "priority": "..."}}], "recommendations": ["..."], "aiAgentReady": true}}
+Format:
+{{"qualityScore": 85, "qualityLevel": "Good", "readiness": "Ready", "clarityScore": 25, "clarityReason": "...", "completenessScore": 35, "completenessReason": "...", "contextScore": 25, "contextReason": "...", "gap": "...", "recommendation": "...", "aiReady": true}}
 """
                 response2 = llm.invoke([HumanMessage(content=prompt2)])
+                import re
                 match2 = re.search(r'\{.*?\}', response2.content, re.DOTALL)
                 clean_json2 = match2.group(0) if match2 else response2.content.strip('`').replace('json\n', '').strip()
-                res_data2 = json.loads(clean_json2)
+                
+                # Fix common trailing comma issues for small models
+                clean_json2 = re.sub(r',\s*\}', '}', clean_json2)
+                res_flat = json.loads(clean_json2)
+                
+                res_data2 = {
+                    "qualityScore": res_flat.get("qualityScore", 65),
+                    "qualityLevel": res_flat.get("qualityLevel", "Fair"),
+                    "implementationReadiness": res_flat.get("readiness", "Needs Clarification"),
+                    "criteriaScores": {
+                        "clarity": {"score": res_flat.get("clarityScore", 15), "maxScore": 30, "reason": res_flat.get("clarityReason", "")},
+                        "completeness": {"score": res_flat.get("completenessScore", 20), "maxScore": 40, "reason": res_flat.get("completenessReason", "")},
+                        "context": {"score": res_flat.get("contextScore", 15), "maxScore": 30, "reason": res_flat.get("contextReason", "")}
+                    },
+                    "gaps": [{"issue": res_flat.get("gap", "Missing context"), "why": "", "suggestion": "", "priority": "High"}],
+                    "recommendations": [res_flat.get("recommendation", "Refine description")],
+                    "aiAgentReady": res_flat.get("aiReady", False)
+                }
             except Exception as e:
                 print(f"Quality LLM Error: {e}")
                 res_data2 = {
                     "qualityScore": 65, "qualityLevel": "Fair", "implementationReadiness": "Needs Clarification",
                     "criteriaScores": {},
-                    "gaps": [{"issue": "Missing details", "why": "Hard to implement", "suggestion": "Add ACs", "priority": "High"}],
-                    "recommendations": ["Improve description"],
+                    "gaps": [{"issue": "Parsing Error", "why": str(e), "suggestion": "N/A", "priority": "Medium"}],
+                    "recommendations": ["Fallback invoked"],
                     "aiAgentReady": False
                 }
                 
