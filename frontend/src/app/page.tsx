@@ -30,6 +30,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [maxResults, setMaxResults] = useState(15);
   const [summary, setSummary] = useState({ overall_status: "Unknown", summary_text: "Based on current defect trend" });
 
   const fetchTickets = async () => {
@@ -79,7 +80,7 @@ export default function Home() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await fetch("http://localhost:8000/api/sync", { method: "POST" });
+      await fetch(`http://localhost:8000/api/sync?max_results=${maxResults}`, { method: "POST" });
       await fetchTickets();
     } catch (err) {
       console.error("Failed to sync", err);
@@ -154,7 +155,18 @@ export default function Home() {
           <p className="text-muted-foreground text-lg ml-1">AI-Powered Project Risk Intelligence</p>
         </div>
         
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
+          <div className="flex items-center gap-2 bg-secondary/30 px-3 py-2 rounded-lg border border-border">
+            <label className="text-sm text-muted-foreground whitespace-nowrap">Load Limit:</label>
+            <input 
+              type="number" 
+              value={maxResults}
+              onChange={(e) => setMaxResults(parseInt(e.target.value) || 15)}
+              className="w-16 bg-transparent border-b border-white/20 text-white outline-none text-center appearance-none"
+              min="1"
+              max="100"
+            />
+          </div>
           <button 
             onClick={handleSync}
             disabled={syncing}

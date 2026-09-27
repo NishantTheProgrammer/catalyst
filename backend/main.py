@@ -74,7 +74,7 @@ def get_session():
         yield session
 
 @app.post("/api/sync")
-def sync_jira_tickets(session: Session = Depends(get_session)):
+def sync_jira_tickets(max_results: int = 15, session: Session = Depends(get_session)):
     """Fetch tickets from Jira API and ingest them into Postgres"""
     jira_url = os.getenv("JIRA_URL")
     jira_user = os.getenv("JIRA_USERNAME")
@@ -86,7 +86,7 @@ def sync_jira_tickets(session: Session = Depends(get_session)):
     url = f"{jira_url.rstrip('/')}/rest/api/3/search/jql"
     payload = {
         "jql": "project = SM AND created >= -30d order by created DESC",
-        "maxResults": 15,
+        "maxResults": max_results,
         "fields": ["summary", "description", "status", "priority", "created", "resolutiondate"]
     }
     auth = HTTPBasicAuth(jira_user, jira_token)
