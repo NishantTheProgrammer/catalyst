@@ -3,36 +3,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Activity, AlertTriangle, CheckCircle, RefreshCw, Bot, Bug, FileWarning, Layers, ShieldCheck, ChevronDown, ChevronUp, X } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-type AnalysisResult = {
-  id: number;
-  category: string;
-  confidence: number;
-  reason: string;
-};
-
-type CriteriaScore = { score: number; maxScore: number; reason: string };
-type TicketQuality = {
-  quality_score: number;
-  quality_level: string;
-  implementation_readiness: string;
-  criteria_scores: Record<string, CriteriaScore>;
-  gaps: { issue: string; why: string; suggestion: string; priority: string }[];
-  recommendations: string[];
-  ai_agent_ready: boolean;
-};
-
-type Ticket = {
-  id: number;
-  jira_id: string;
-  title: string;
-  description: string;
-  status: string;
-  created_date: string;
-  link: string;
-  is_processed: boolean;
-  analysis: AnalysisResult | null;
-  quality: TicketQuality | null;
-};
+import Header from "@/components/Header";
+import KPIStats from "@/components/KPIStats";
+import { Ticket, AnalysisResult, TicketQuality, CriteriaScore } from "@/types";
 
 const COLORS = ['#f43f5e', '#3b82f6', '#fbbf24', '#10b981', '#a855f7', '#64748b'];
 
@@ -203,100 +176,23 @@ export default function Home() {
   
   return (
     <main className="min-h-screen p-8 max-w-7xl mx-auto flex flex-col gap-8">
-      {/* Header */}
-      <header className="flex justify-between items-end mb-4 animate-fade-in">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-primary/20 p-2 rounded-xl border border-primary/30">
-              <Activity className="w-6 h-6 text-primary" />
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-              NASA Reviewer
-            </h1>
-          </div>
-          <p className="text-muted-foreground text-lg ml-1">AI-Powered Project Risk Intelligence</p>
-        </div>
-        
-        <div className="flex gap-4 items-center">
-          <div className="flex items-center gap-2 bg-secondary/30 px-3 py-2 rounded-lg border border-border">
-            <label className="text-sm text-muted-foreground whitespace-nowrap">Load Limit:</label>
-            <input 
-              type="number" 
-              value={maxResults}
-              onChange={(e) => setMaxResults(parseInt(e.target.value) || 15)}
-              className="w-16 bg-transparent border-b border-white/20 text-white outline-none text-center appearance-none"
-              min="1"
-              max="100"
-            />
-          </div>
-          <button 
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/80 hover:bg-secondary border border-border transition-all disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-            Sync Jira
-          </button>
-          
-          <button 
-            onClick={handleProcess}
-            disabled={processing}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white shadow-[0_0_15px_rgba(139,92,246,0.3)] transition-all disabled:opacity-50"
-          >
-            <Bot className={`w-4 h-4 ${processing ? 'animate-pulse' : ''}`} />
-            Run AI Analysis
-          </button>
-        </div>
-      </header>
+      <Header 
+        maxResults={maxResults}
+        setMaxResults={setMaxResults}
+        syncing={syncing}
+        handleSync={handleSync}
+        processing={processing}
+        handleProcess={handleProcess}
+      />
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in animate-delay-1">
-        <div className="relative rounded-2xl overflow-hidden p-[1.5px]">
-          {syncing ? (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1500px] h-[1500px] bg-[conic-gradient(from_0deg,transparent_0_280deg,#3b82f6_360deg)] animate-[spin_2s_linear_infinite] z-0" />
-          ) : (
-            <div className="absolute inset-0 z-0" />
-          )}
-          <div className={`glass-panel h-full p-6 rounded-2xl flex flex-col gap-2 relative z-10 ${syncing ? 'bg-[#111113]' : ''}`}>
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <RefreshCw className="w-16 h-16" />
-            </div>
-            <h3 className="text-muted-foreground font-medium">Total Tickets</h3>
-            <p className="text-4xl font-bold">{tickets.length}</p>
-          </div>
-        </div>
-        
-        <div className="relative rounded-2xl overflow-hidden p-[1.5px]">
-          {processing ? (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1500px] h-[1500px] bg-[conic-gradient(from_0deg,transparent_0_280deg,#10b981_360deg)] animate-[spin_2s_linear_infinite] z-0" />
-          ) : (
-            <div className="absolute inset-0 z-0" />
-          )}
-          <div className={`glass-panel h-full p-6 rounded-2xl flex flex-col gap-2 relative z-10 ${processing ? 'bg-[#111113]' : ''}`}>
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <CheckCircle className="w-16 h-16" />
-            </div>
-            <h3 className="text-muted-foreground font-medium">AI Processed</h3>
-            <p className="text-4xl font-bold text-emerald-400">{processedCount}</p>
-            <p className="text-sm text-emerald-400/70">{tickets.length > 0 ? Math.round((processedCount/tickets.length)*100) : 0}% coverage</p>
-          </div>
-        </div>
-
-
-        <div className="glass-panel p-6 rounded-2xl flex flex-col gap-2 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <ShieldCheck className="w-16 h-16" />
-          </div>
-          <h3 className="text-muted-foreground font-medium">Avg Ticket Quality</h3>
-          <p className={`text-4xl font-bold ${
-            avgQuality >= 75 ? 'text-emerald-400' :
-            avgQuality >= 60 ? 'text-amber-400' : 'text-rose-400'
-          }`}>
-            {avgQuality}/100
-          </p>
-          <p className="text-sm text-emerald-400/70">{qualityPercent}% Good/Excellent</p>
-        </div>
-      </div>
+      <KPIStats 
+        syncing={syncing}
+        processing={processing}
+        totalTickets={tickets.length}
+        processedCount={processedCount}
+        avgQuality={avgQuality}
+        qualityPercent={qualityPercent}
+      />
 
       {/* Charts Row */}
       {processedCount > 0 && (
