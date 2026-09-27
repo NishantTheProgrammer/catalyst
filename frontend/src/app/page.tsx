@@ -43,6 +43,7 @@ export default function Home() {
   const [processing, setProcessing] = useState(false);
   const [maxResults, setMaxResults] = useState(15);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
   const [expandedTicketId, setExpandedTicketId] = useState<number | null>(null);
   const [summary, setSummary] = useState({ overall_status: "Unknown", summary_text: "Based on current defect trend" });
 
@@ -308,7 +309,17 @@ export default function Home() {
                     contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
                     cursor={{fill: 'rgba(255,255,255,0.05)'}}
                   />
-                  <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {qualityDistribution.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        cursor="pointer"
+                        fill="#10b981"
+                        onClick={() => setSelectedQuality(selectedQuality === entry.name ? null : entry.name)}
+                        style={{ opacity: selectedQuality && selectedQuality !== entry.name ? 0.3 : 1, transition: 'opacity 300ms' }}
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -418,7 +429,9 @@ export default function Home() {
       <div className="glass-panel rounded-2xl overflow-hidden mt-4 animate-fade-in animate-delay-3">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
           <h2 className="text-xl font-semibold">
-            Recent Defect Activity {selectedCategory && <span className="text-primary text-sm ml-2 px-2 py-1 bg-primary/10 rounded-full">Filtering by: {selectedCategory}</span>}
+            Recent Defect Activity 
+            {selectedCategory && <span className="text-primary text-sm ml-2 px-2 py-1 bg-primary/10 rounded-full">Filtering by: {selectedCategory}</span>}
+            {selectedQuality && <span className="text-emerald-400 text-sm ml-2 px-2 py-1 bg-emerald-500/10 rounded-full">Filtering by: {selectedQuality} Quality</span>}
           </h2>
         </div>
         
@@ -429,14 +442,19 @@ export default function Home() {
             </div>
           ) : (() => {
             const displayedTickets = tickets.filter(t => {
-              if (!selectedCategory) return true;
-              if (!t.is_processed || !t.analysis) return false;
-              return t.analysis.category === selectedCategory;
+              let match = true;
+              if (selectedCategory) {
+                match = match && !!t.is_processed && !!t.analysis && t.analysis.category === selectedCategory;
+              }
+              if (selectedQuality) {
+                match = match && !!t.is_processed && !!t.quality && t.quality.quality_level === selectedQuality;
+              }
+              return match;
             });
 
             return displayedTickets.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                {tickets.length > 0 ? `No tickets found for category "${selectedCategory}".` : 'No tickets found. Click "Sync Jira" to fetch data.'}
+                {tickets.length > 0 ? `No tickets found for selected filters.` : 'No tickets found. Click "Sync Jira" to fetch data.'}
               </div>
             ) : (
               displayedTickets.map((ticket) => (
