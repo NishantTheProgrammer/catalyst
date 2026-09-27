@@ -541,33 +541,27 @@ export default function Home() {
                         </div>
                       </div>
                       
-                      {ticket.quality.gaps.length > 0 && (
+                      {(ticket.quality.gaps.length > 0 || ticket.quality.recommendations.length > 0) && (
                         <div>
-                          <h4 className="font-medium text-rose-400 border-b border-rose-500/20 pb-2 mb-3">Identified Gaps</h4>
-                          <div className="flex flex-col gap-2">
+                          <h4 className="font-medium text-amber-400 border-b border-amber-500/20 pb-2 mb-3">AI Actionable Feedback</h4>
+                          <div className="flex flex-col gap-3">
                             {ticket.quality.gaps.map((gap, i) => (
-                              <div key={i} className="bg-rose-500/5 border border-rose-500/10 p-3 rounded-lg flex flex-col gap-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <AlertTriangle className="w-4 h-4 text-rose-400" />
-                                  <span className="font-medium text-rose-200">{gap.issue}</span>
-                                  <span className="text-[10px] uppercase bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded ml-auto">{gap.priority}</span>
+                              <div key={`gap-${i}`} className="bg-amber-500/5 border border-amber-500/10 p-3 rounded-lg flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                  <AlertTriangle className="w-4 h-4 text-amber-400" />
+                                  <span className="font-medium text-amber-200">Missing/Unclear: {gap.issue}</span>
                                 </div>
-                                <p className="text-xs text-rose-200/70"><strong>Why it matters:</strong> {gap.why}</p>
-                                <p className="text-xs text-rose-200/90"><strong>Suggestion:</strong> {gap.suggestion}</p>
+                              </div>
+                            ))}
+                            {ticket.quality.recommendations.map((rec, i) => (
+                              <div key={`rec-${i}`} className="bg-blue-500/5 border border-blue-500/10 p-3 rounded-lg flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Bot className="w-4 h-4 text-blue-400" />
+                                  <span className="font-medium text-blue-200">Recommendation: {rec}</span>
+                                </div>
                               </div>
                             ))}
                           </div>
-                        </div>
-                      )}
-                      
-                      {ticket.quality.recommendations.length > 0 && (
-                        <div>
-                          <h4 className="font-medium text-blue-400 border-b border-blue-500/20 pb-2 mb-3">Recommendations</h4>
-                          <ul className="list-disc list-inside text-xs space-y-2 text-blue-200/80">
-                            {ticket.quality.recommendations.map((rec, i) => (
-                              <li key={i}>{rec}</li>
-                            ))}
-                          </ul>
                         </div>
                       )}
                     </div>
