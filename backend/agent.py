@@ -130,15 +130,21 @@ Reply STRICTLY in this JSON format:
                 quality_score=res_data.get("qualityScore", 65),
                 quality_level=res_data.get("qualityLevel", "Fair"),
                 implementation_readiness=res_data.get("implementationReadiness", "Needs Clarification"),
-                criteria_scores=res_data.get("criteriaScores", {{}}),
+                criteria_scores=res_data.get("criteriaScores", {}),
                 gaps=res_data.get("gaps", []),
                 recommendations=res_data.get("recommendations", []),
                 ai_agent_ready=res_data.get("aiAgentReady", False)
             )
             session.add(qual)
+            
+            db_ticket = session.get(Ticket, ticket.id)
+            if db_ticket:
+                db_ticket.is_processed = True
+                session.add(db_ticket)
+                
             qualities.append(res_data)
                 
-        session.commit()
+            session.commit()
     return {"qualities": qualities}
 
 def update_db(state: GraphState):
@@ -171,14 +177,6 @@ def update_db(state: GraphState):
     with Session(engine) as session:
         summary = ProjectSummary(overall_status=status, summary_text=text)
         session.add(summary)
-        
-        # Mark all tickets as processed since classification and quality are done
-        for t in tickets:
-            db_ticket = session.get(Ticket, t.id)
-            if db_ticket:
-                db_ticket.is_processed = True
-                session.add(db_ticket)
-                
         session.commit()
         
     return {"tickets": tickets}
