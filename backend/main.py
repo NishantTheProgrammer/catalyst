@@ -16,6 +16,13 @@ class Ticket(SQLModel, table=True):
     status: str
     is_processed: bool = Field(default=False)
 
+class AnalysisResult(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    ticket_id: int = Field(foreign_key="ticket.id")
+    category: str
+    confidence: int
+    reason: str
+
 @app.on_event("startup")
 def on_startup():
     try:
@@ -61,3 +68,12 @@ def get_tickets(session: Session = Depends(get_session)):
     """Fetch all tickets to display on the frontend"""
     tickets = session.exec(select(Ticket).order_by(Ticket.id.desc())).all()
     return tickets
+
+@app.post("/api/process")
+def process_tickets():
+    """Trigger the LangGraph workflow to process unprocessed tickets"""
+    # Import inside to avoid circular dependency
+    from agent import app_graph
+    
+    result = app_graph.invoke({"tickets": [], "classifications": []})
+    return {"status": "Processing completed", "tickets_processed": len(result.get("tickets", []))}
