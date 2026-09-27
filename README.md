@@ -5,9 +5,17 @@ A full-stack application that seamlessly connects to Jira, ingests project ticke
 ## 🚀 Tech Stack
 
 *   **Frontend**: Next.js (App Router), React, Tailwind CSS, Recharts, Lucide Icons
-*   **Backend**: Python, FastAPI, LangGraph, LangChain, SQLModel
+*   **Backend**: Python, FastAPI, LangGraph, LangChain, SQLModel (Modular Architecture)
 *   **Database**: PostgreSQL (Dockerized)
 *   **AI/LLM**: Local Ollama (`llama3.2:1b` by default)
+
+## ✨ Features
+*   **Automated Ticket Sync**: Ingests project tickets directly from Jira via JQL.
+*   **AI Defect Classification**: Automatically categorizes defects (Code, Data, Config, Doc, etc.).
+*   **5-Point Ticket Quality Score**: Evaluates ticket readiness based on Clarity, Completeness, Context, Reproducibility, and Dependencies.
+*   **AI Actionable Feedback**: Provides explicit recommendations on what details are missing from poorly written tickets.
+*   **Interactive Visualizations**: Clickable Pie and Bar charts that act as active filters for the dashboard ticket list.
+*   **Radar Metrics**: Visualize average ticket quality metrics using multi-axis radar charts.
 
 ---
 
