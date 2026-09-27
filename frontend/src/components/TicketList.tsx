@@ -25,9 +25,10 @@ export default function TicketList({
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "Code defect": return <Bug className="w-4 h-4 text-rose-400" />;
-      case "Data defect": return <Layers className="w-4 h-4 text-blue-400" />;
-      case "Requirement gap": return <FileWarning className="w-4 h-4 text-amber-400" />;
+      case "Code": return <Bug className="w-4 h-4 text-rose-400" />;
+      case "Data": return <Layers className="w-4 h-4 text-blue-400" />;
+      case "Configuration": return <FileWarning className="w-4 h-4 text-amber-400" />;
+      case "Requirement": return <FileWarning className="w-4 h-4 text-amber-400" />;
       default: return <AlertTriangle className="w-4 h-4 text-gray-400" />;
     }
   };

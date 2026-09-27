@@ -62,8 +62,8 @@ def analyze_tickets(state: GraphState):
                 reason = res_data1.get("reason", "")
             except Exception as e:
                 print(f"LLM Classification Error: {e}")
-                category = "Data defect" if "ETL" in ticket.title else "Code defect"
-                if "legacy" in ticket.title.lower(): category = "Legacy behaviour"
+                category = "Data" if "ETL" in ticket.title else "Code"
+                if "legacy" in ticket.title.lower(): category = "Legacy"
                 confidence = 85
                 reason = "AI fallback: Mapped based on keyword heuristics."
                 

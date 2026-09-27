@@ -26,7 +26,7 @@ export default function Charts({
   colors
 }: ChartsProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fade-in animate-delay-2 mt-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in animate-delay-2 mt-4">
       <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
         <h3 className="text-xl font-semibold">Quality Distribution</h3>
         <div className="h-[250px] w-full">
