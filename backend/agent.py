@@ -1,6 +1,7 @@
 import os
 from sqlmodel import Session, select
 from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, List
@@ -11,7 +12,15 @@ class GraphState(TypedDict):
     tickets: List[Ticket]
     classifications: List[dict]
 
-llm = ChatOpenAI(model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY", "mock-key-to-prevent-crash"))
+# Load AI Model based on ENV vars
+openai_key = os.getenv("OPENAI_API_KEY")
+if openai_key:
+    llm = ChatOpenAI(model="gpt-4o-mini", api_key=openai_key)
+else:
+    # Use free, local Ollama model
+    ollama_url = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
+    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
+    llm = ChatOllama(base_url=ollama_url, model=ollama_model)
 
 def fetch_unprocessed(state: GraphState):
     with Session(engine) as session:
