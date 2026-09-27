@@ -277,21 +277,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="glass-panel p-6 rounded-2xl flex flex-col gap-2">
-          <h3 className="text-muted-foreground font-medium">Project Health</h3>
-          <p className={`text-4xl font-bold ${
-            summary.overall_status === 'Stable' ? 'text-emerald-400' :
-            summary.overall_status === 'Watch' ? 'text-amber-400' :
-            summary.overall_status === 'At Risk' ? 'text-rose-400' :
-            'text-gray-500'
-          }`}>
-            {summary.overall_status}
-          </p>
-          <p className="text-sm text-muted-foreground line-clamp-3" title={summary.summary_text}>
-            {summary.summary_text}
-          </p>
-        </div>
-        
+
         <div className="glass-panel p-6 rounded-2xl flex flex-col gap-2 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-10">
             <ShieldCheck className="w-16 h-16" />
