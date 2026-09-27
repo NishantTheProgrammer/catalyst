@@ -36,7 +36,7 @@ def classify_defects(state: GraphState):
     with Session(engine) as session:
         for ticket in tickets:
             try:
-                prompt = f"Classify this Jira ticket into one category (Code defect, Data defect, Requirement gap, Environment issue). Title: {ticket.title}. Description: {ticket.description}. Reply in strictly JSON format: {{\"category\": \"...\", \"confidence\": 90, \"reason\": \"...\"}}"
+                prompt = f"Classify this Jira ticket into one category (Code defect, Data defect, Requirement gap, Environment issue). Title: {ticket.title}. Description: {ticket.description}. Reply in strictly JSON format: {{\"category\": \"...\", \"confidence\": <integer 1-100>, \"reason\": \"...\"}}"
                 response = llm.invoke([HumanMessage(content=prompt)])
                 import re
                 match = re.search(r'\{.*?\}', response.content, re.DOTALL)
