@@ -82,14 +82,25 @@ export default function Home() {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (processing) {
-      interval = setInterval(() => {
-        fetchTickets();
-      }, 2000);
+      interval = setInterval(async () => {
+        await fetchTickets();
+        await fetchSummary();
+      }, 3000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [processing]);
+
+  // When tickets update, check if we're done processing
+  useEffect(() => {
+    if (processing && tickets.length > 0) {
+      const allProcessed = tickets.every(t => t.is_processed);
+      if (allProcessed) {
+        setProcessing(false);
+      }
+    }
+  }, [tickets, processing]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -104,15 +115,15 @@ export default function Home() {
   };
 
   const handleProcess = async () => {
+    const hasUnprocessed = tickets.some(t => !t.is_processed);
+    if (!hasUnprocessed) return;
+    
     setProcessing(true);
     try {
       await fetch("http://localhost:8000/api/process", { method: "POST" });
     } catch (err) {
       console.error("Failed to process", err);
-    } finally {
       setProcessing(false);
-      await fetchTickets(); // Final sync when done
-      await fetchSummary();
     }
   };
 

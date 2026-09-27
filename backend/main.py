@@ -174,11 +174,17 @@ def get_tickets(session: Session = Depends(get_session)):
         response.append(data)
     return response
 
-@app.post("/api/process")
-def process_tickets():
-    """Trigger the LangGraph workflow to process unprocessed tickets"""
-    # Import inside to avoid circular dependency
+from fastapi import BackgroundTasks
+
+def run_agent_workflow():
     from agent import app_graph
-    
-    result = app_graph.invoke({"tickets": [], "classifications": []})
-    return {"status": "Processing completed", "tickets_processed": len(result.get("tickets", []))}
+    try:
+        app_graph.invoke({"tickets": [], "classifications": []})
+    except Exception as e:
+        print(f"Workflow error: {e}")
+
+@app.post("/api/process")
+def process_tickets(background_tasks: BackgroundTasks):
+    """Trigger the LangGraph workflow in the background to avoid timeouts"""
+    background_tasks.add_task(run_agent_workflow)
+    return {"status": "Processing started in background"}
