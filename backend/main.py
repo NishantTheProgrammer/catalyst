@@ -40,12 +40,20 @@ class AnalysisResult(SQLModel, table=True):
     reason: str
     ticket: Optional["Ticket"] = Relationship(back_populates="analysis")
 
+class ProjectSummary(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    overall_status: str
+    summary_text: str
+
 class Ticket(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     jira_id: str
     title: str
     description: str
     status: str
+    priority: str = Field(default="Medium")
+    created_date: str = Field(default="")
+    resolution_date: str | None = Field(default=None)
     is_processed: bool = Field(default=False)
     analysis: Optional[AnalysisResult] = Relationship(back_populates="ticket")
 
@@ -79,7 +87,7 @@ def sync_jira_tickets(session: Session = Depends(get_session)):
     payload = {
         "jql": "project = SM AND created >= -30d order by created DESC",
         "maxResults": 15,
-        "fields": ["summary", "description", "status"]
+        "fields": ["summary", "description", "status", "priority", "created", "resolutiondate"]
     }
     auth = HTTPBasicAuth(jira_user, jira_token)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
@@ -100,17 +108,19 @@ def sync_jira_tickets(session: Session = Depends(get_session)):
         fields = issue.get("fields", {})
         title = fields.get("summary", "")
         description = fields.get("description") or "No description provided."
+        
         import re
         if isinstance(description, dict):
-            # Parse ADF (Atlassian Document Format)
             description = extract_adf_text(description)
             if not description:
                 description = "No readable description found."
         
-        # Clean up basic Jira Wiki markup (like "h3. ")
         description = re.sub(r'h[1-6]\.\s*', '', description)
             
         status = fields.get("status", {}).get("name", "Unknown")
+        priority = fields.get("priority", {}).get("name", "Medium") if fields.get("priority") else "Medium"
+        created_date = fields.get("created", "")
+        resolution_date = fields.get("resolutiondate")
         
         existing = session.exec(select(Ticket).where(Ticket.jira_id == jira_id)).first()
         if not existing:
@@ -118,13 +128,21 @@ def sync_jira_tickets(session: Session = Depends(get_session)):
                 jira_id=jira_id,
                 title=title,
                 description=description[:500],
-                status=status
+                status=status,
+                priority=priority,
+                created_date=created_date,
+                resolution_date=resolution_date
             )
             session.add(new_ticket)
             count += 1
             
     session.commit()
     return {"status": "Sync completed successfully", "new_tickets_ingested": count}
+
+@app.get("/api/summary")
+def get_summary(session: Session = Depends(get_session)):
+    summary = session.exec(select(ProjectSummary).order_by(ProjectSummary.id.desc())).first()
+    return summary.model_dump() if summary else {"overall_status": "Unknown", "summary_text": "No summary generated yet."}
 
 @app.get("/api/tickets")
 def get_tickets(session: Session = Depends(get_session)):

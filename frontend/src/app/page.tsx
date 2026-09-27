@@ -25,6 +25,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [summary, setSummary] = useState({ overall_status: "Unknown", summary_text: "Based on current defect trend" });
 
   const fetchTickets = async () => {
     try {
@@ -40,8 +41,21 @@ export default function Home() {
     }
   };
 
+  const fetchSummary = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/summary");
+      if (res.ok) {
+        const data = await res.json();
+        setSummary(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch summary", err);
+    }
+  };
+
   useEffect(() => {
     fetchTickets();
+    fetchSummary();
   }, []);
 
   // Poll for tickets while AI is processing
@@ -78,6 +92,7 @@ export default function Home() {
     } finally {
       setProcessing(false);
       await fetchTickets(); // Final sync when done
+      await fetchSummary();
     }
   };
 
@@ -147,12 +162,17 @@ export default function Home() {
 
         <div className="glass-panel p-6 rounded-2xl flex flex-col gap-2">
           <h3 className="text-muted-foreground font-medium">Project Health</h3>
-          {processedCount > 0 ? (
-            <p className="text-4xl font-bold text-amber-400">At Risk</p>
-          ) : (
-            <p className="text-4xl font-bold text-gray-500">Unknown</p>
-          )}
-          <p className="text-sm text-muted-foreground">Based on current defect trend</p>
+          <p className={`text-4xl font-bold ${
+            summary.overall_status === 'Stable' ? 'text-emerald-400' :
+            summary.overall_status === 'Watch' ? 'text-amber-400' :
+            summary.overall_status === 'At Risk' ? 'text-rose-400' :
+            'text-gray-500'
+          }`}>
+            {summary.overall_status}
+          </p>
+          <p className="text-sm text-muted-foreground line-clamp-3" title={summary.summary_text}>
+            {summary.summary_text}
+          </p>
         </div>
       </div>
 

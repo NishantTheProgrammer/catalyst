@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, List
 import json
-from main import engine, Ticket, AnalysisResult
+from main import engine, Ticket, AnalysisResult, ProjectSummary
 
 class GraphState(TypedDict):
     tickets: List[Ticket]
@@ -82,8 +82,38 @@ def classify_defects(state: GraphState):
     return {"classifications": classifications}
 
 def update_db(state: GraphState):
-    # DB update moved to classify_defects to enable UI progress polling
-    return {"tickets": state.get("tickets", [])}
+    tickets = state.get("tickets", [])
+    classifications = state.get("classifications", [])
+    if not classifications:
+        return {"tickets": []}
+        
+    # Generate Project Summary
+    summary_prompt = "Based on these tickets and classifications, write a 1-paragraph project health summary focusing on defect trends and risks. Also provide an overall_status of strictly either 'Stable', 'Watch', or 'At Risk'.\n\nData:\n"
+    for t, c in zip(tickets, classifications):
+        summary_prompt += f"Ticket: {t.title}, AI Category: {c.get('category')}\n"
+    
+    summary_prompt += "\nReply in strictly JSON format: {\"overall_status\": \"...\", \"summary_text\": \"...\"}"
+    
+    try:
+        response = llm.invoke([HumanMessage(content=summary_prompt)])
+        import re, json
+        match = re.search(r'\{.*?\}', response.content, re.DOTALL)
+        clean_json = match.group(0) if match else response.content.strip('`').replace('json\n', '').strip()
+        res_data = json.loads(clean_json)
+        
+        status = res_data.get("overall_status", "Unknown")
+        text = res_data.get("summary_text", "Failed to generate summary.")
+    except Exception as e:
+        print(f"Summary Error: {e}")
+        status = "Watch"
+        text = "AI fallback summary: Several defects detected, further investigation recommended."
+        
+    with Session(engine) as session:
+        summary = ProjectSummary(overall_status=status, summary_text=text)
+        session.add(summary)
+        session.commit()
+        
+    return {"tickets": tickets}
 
 # Build LangGraph workflow
 workflow = StateGraph(GraphState)
