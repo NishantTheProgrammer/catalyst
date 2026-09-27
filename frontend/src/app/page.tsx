@@ -194,13 +194,20 @@ export default function Home() {
           <p className="text-4xl font-bold">{tickets.length}</p>
         </div>
         
-        <div className="glass-panel p-6 rounded-2xl flex flex-col gap-2 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <CheckCircle className="w-16 h-16" />
+        <div className="relative rounded-2xl overflow-hidden p-[1.5px]">
+          {processing ? (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] bg-[conic-gradient(from_0deg,transparent_0_280deg,#10b981_360deg)] animate-[spin_2s_linear_infinite] z-0" />
+          ) : (
+            <div className="absolute inset-0 z-0" />
+          )}
+          <div className={`glass-panel h-full p-6 rounded-2xl flex flex-col gap-2 relative z-10 ${processing ? 'bg-[#111113]' : ''}`}>
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <CheckCircle className="w-16 h-16" />
+            </div>
+            <h3 className="text-muted-foreground font-medium">AI Processed</h3>
+            <p className="text-4xl font-bold text-emerald-400">{processedCount}</p>
+            <p className="text-sm text-emerald-400/70">{tickets.length > 0 ? Math.round((processedCount/tickets.length)*100) : 0}% coverage</p>
           </div>
-          <h3 className="text-muted-foreground font-medium">AI Processed</h3>
-          <p className="text-4xl font-bold text-emerald-400">{processedCount}</p>
-          <p className="text-sm text-emerald-400/70">{tickets.length > 0 ? Math.round((processedCount/tickets.length)*100) : 0}% coverage</p>
         </div>
 
         <div className="glass-panel p-6 rounded-2xl flex flex-col gap-2">
