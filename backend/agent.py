@@ -6,7 +6,8 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, List
 import json
-from main import engine, Ticket, AnalysisResult, ProjectSummary, TicketQuality
+from database import engine
+from models import Ticket, AnalysisResult, ProjectSummary, TicketQuality
 
 class GraphState(TypedDict):
     tickets: List[Ticket]
