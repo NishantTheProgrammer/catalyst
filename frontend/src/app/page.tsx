@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Activity, AlertTriangle, CheckCircle, RefreshCw, Bot, Bug, FileWarning, Layers } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 type AnalysisResult = {
   id: number;
@@ -16,9 +17,13 @@ type Ticket = {
   title: string;
   description: string;
   status: string;
+  created_date: string;
+  link: string;
   is_processed: boolean;
   analysis: AnalysisResult | null;
 };
+
+const COLORS = ['#f43f5e', '#3b82f6', '#fbbf24', '#10b981', '#a855f7', '#64748b'];
 
 export default function Home() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -107,6 +112,25 @@ export default function Home() {
 
   const processedCount = tickets.filter(t => t.is_processed).length;
   
+  const categoryData = Object.entries(
+    tickets.reduce((acc, t) => {
+      if (t.is_processed && t.analysis) {
+        acc[t.analysis.category] = (acc[t.analysis.category] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([name, value]) => ({ name, value }));
+
+  const trendData = Object.entries(
+    tickets.reduce((acc, t) => {
+      const date = t.created_date ? t.created_date.substring(0, 10) : "Unknown";
+      if (date !== "Unknown") {
+        acc[date] = (acc[date] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>)
+  ).sort((a, b) => a[0].localeCompare(b[0])).map(([date, count]) => ({ date, count }));
+  
   return (
     <main className="min-h-screen p-8 max-w-7xl mx-auto flex flex-col gap-8">
       {/* Header */}
@@ -176,8 +200,65 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Charts Row */}
+      {processedCount > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in animate-delay-2 mt-4">
+          <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+            <h3 className="text-xl font-semibold">Defect Breakdown</h3>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3">
+              {categoryData.map((entry, index) => (
+                <div key={entry.name} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                  {entry.name} ({entry.value})
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+            <h3 className="text-xl font-semibold">Defects Over Time</h3>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="date" stroke="rgba(255,255,255,0.4)" fontSize={12} tickMargin={10} />
+                  <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} allowDecimals={false} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                  />
+                  <Line type="monotone" dataKey="count" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4, fill: "#8b5cf6" }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Ticket List */}
-      <div className="glass-panel rounded-2xl overflow-hidden mt-4 animate-fade-in animate-delay-2">
+      <div className="glass-panel rounded-2xl overflow-hidden mt-4 animate-fade-in animate-delay-3">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
           <h2 className="text-xl font-semibold">Recent Defect Activity</h2>
         </div>
@@ -198,9 +279,14 @@ export default function Home() {
                 {/* Ticket Details */}
                 <div className="flex-1 flex flex-col gap-2">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono px-2 py-1 bg-white/10 rounded text-gray-300">
+                    <a 
+                      href={ticket.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs font-mono px-2 py-1 bg-primary/20 hover:bg-primary/40 text-primary-foreground rounded transition-colors cursor-pointer"
+                    >
                       {ticket.jira_id}
-                    </span>
+                    </a>
                     <h3 className="font-medium text-lg leading-tight">{ticket.title}</h3>
                   </div>
                   <p className="text-muted-foreground text-sm line-clamp-2 mt-1">

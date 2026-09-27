@@ -148,10 +148,13 @@ def get_summary(session: Session = Depends(get_session)):
 def get_tickets(session: Session = Depends(get_session)):
     """Fetch all tickets to display on the frontend"""
     tickets = session.exec(select(Ticket).order_by(Ticket.id.desc())).all()
+    jira_base = os.getenv("JIRA_URL", "https://jira.com").rstrip('/')
+    
     response = []
     for t in tickets:
         data = t.model_dump()
         data["analysis"] = t.analysis.model_dump() if t.analysis else None
+        data["link"] = f"{jira_base}/browse/{t.jira_id}"
         response.append(data)
     return response
 
