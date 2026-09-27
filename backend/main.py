@@ -1,7 +1,7 @@
 import os
 import uuid
 from typing import Optional
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 import requests
 from requests.auth import HTTPBasicAuth
@@ -62,23 +62,23 @@ def sync_jira_tickets(session: Session = Depends(get_session)):
     jira_token = os.getenv("JIRA_API_TOKEN")
 
     if not jira_url or not jira_user or not jira_token:
-        return {"status": "Error", "message": "Jira credentials missing in .env"}
+        raise HTTPException(status_code=400, detail="Jira credentials missing in .env")
 
-    url = f"{jira_url.rstrip('/')}/rest/api/2/search"
-    query = {
-        "jql": "order by created DESC",
+    url = f"{jira_url.rstrip('/')}/rest/api/3/search/jql"
+    payload = {
+        "jql": "created >= -30d order by created DESC",
         "maxResults": 15,
-        "fields": "summary,description,status"
+        "fields": ["summary", "description", "status"]
     }
     auth = HTTPBasicAuth(jira_user, jira_token)
-    headers = {"Accept": "application/json"}
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
     
     try:
-        response = requests.get(url, headers=headers, params=query, auth=auth, timeout=10)
+        response = requests.post(url, headers=headers, json=payload, auth=auth, timeout=10)
         if response.status_code != 200:
-            return {"status": "Error", "message": f"Failed to fetch from Jira: {response.text}"}
+            raise HTTPException(status_code=400, detail=f"Failed to fetch from Jira: {response.text}")
     except Exception as e:
-        return {"status": "Error", "message": f"Request failed: {str(e)}"}
+        raise HTTPException(status_code=500, detail=f"Request failed: {str(e)}")
         
     data = response.json()
     issues = data.get("issues", [])
