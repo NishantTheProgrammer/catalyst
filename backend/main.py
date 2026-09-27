@@ -6,6 +6,17 @@ from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationsh
 import requests
 from requests.auth import HTTPBasicAuth
 
+def extract_adf_text(adf_node):
+    """Recursively extract plain text from Atlassian Document Format"""
+    if not isinstance(adf_node, dict):
+        return ""
+    text = ""
+    if adf_node.get("type") == "text":
+        text += adf_node.get("text", "")
+    for child in adf_node.get("content", []):
+        text += extract_adf_text(child) + " "
+    return text.strip()
+
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="NASA Reviewer API")
@@ -90,8 +101,10 @@ def sync_jira_tickets(session: Session = Depends(get_session)):
         title = fields.get("summary", "")
         description = fields.get("description") or "No description provided."
         if isinstance(description, dict):
-            # In case the API returns ADF (Atlassian Document Format) despite asking for v2
-            description = "Complex formatting omitted. See Jira for full description."
+            # Parse ADF (Atlassian Document Format)
+            description = extract_adf_text(description)
+            if not description:
+                description = "No readable description found."
             
         status = fields.get("status", {}).get("name", "Unknown")
         
