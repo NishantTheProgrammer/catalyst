@@ -121,15 +121,22 @@ export default function Home() {
     }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name, value }));
 
+  const categories = Array.from(new Set(tickets.filter(t => t.is_processed && t.analysis).map(t => t.analysis!.category)));
+
   const trendData = Object.entries(
     tickets.reduce((acc, t) => {
       const date = t.created_date ? t.created_date.substring(0, 10) : "Unknown";
-      if (date !== "Unknown") {
-        acc[date] = (acc[date] || 0) + 1;
+      if (date !== "Unknown" && t.is_processed && t.analysis) {
+        if (!acc[date]) {
+          acc[date] = { date };
+          categories.forEach(c => acc[date][c] = 0);
+        }
+        const cat = t.analysis.category;
+        acc[date][cat] = (acc[date][cat] || 0) + 1;
       }
       return acc;
-    }, {} as Record<string, number>)
-  ).sort((a, b) => a[0].localeCompare(b[0])).map(([date, count]) => ({ date, count }));
+    }, {} as Record<string, any>)
+  ).sort((a, b) => a[0].localeCompare(b[0])).map(([_, data]) => data);
   
   return (
     <main className="min-h-screen p-8 max-w-7xl mx-auto flex flex-col gap-8">
@@ -249,7 +256,18 @@ export default function Home() {
                   <RechartsTooltip 
                     contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
                   />
-                  <Line type="monotone" dataKey="count" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4, fill: "#8b5cf6" }} activeDot={{ r: 6 }} />
+                  {categories.map((category, index) => (
+                    <Line 
+                      key={category}
+                      type="monotone" 
+                      dataKey={category} 
+                      name={category}
+                      stroke={COLORS[index % COLORS.length]} 
+                      strokeWidth={3} 
+                      dot={{ r: 4, fill: COLORS[index % COLORS.length] }} 
+                      activeDot={{ r: 6 }} 
+                    />
+                  ))}
                 </LineChart>
               </ResponsiveContainer>
             </div>
