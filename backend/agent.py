@@ -83,7 +83,7 @@ Evaluate 3 criteria: Clarity (out of 30), Completeness (out of 40), Context (out
 Keep reasoning brief. You MUST reply ONLY with valid JSON, flat structure.
 
 Format:
-{{"qualityScore": 85, "qualityLevel": "Good", "readiness": "Ready", "clarityScore": 25, "clarityReason": "...", "completenessScore": 35, "completenessReason": "...", "contextScore": 25, "contextReason": "...", "gap": "...", "recommendation": "...", "aiReady": true}}
+{{"qualityScore": 85, "qualityLevel": "Good", "readiness": "Ready", "clarityScore": 25, "clarityReason": "...", "completenessScore": 35, "completenessReason": "...", "contextScore": 25, "contextReason": "...", "missingInformation": "...", "recommendation": "...", "aiReady": true}}
 """
                 response2 = llm.invoke([HumanMessage(content=prompt2)])
                 import re
@@ -96,7 +96,6 @@ Format:
                 except Exception as json_err:
                     print(f"JSON Parse Error, falling back to regex: {json_err}")
                     res_flat = {}
-                    # Try to regex extract key integer and string fields
                     score_match = re.search(r'"qualityScore"\s*:\s*(\d+)', clean_json2)
                     if score_match: res_flat["qualityScore"] = int(score_match.group(1))
                     
@@ -107,9 +106,14 @@ Format:
                         m = re.search(fr'"{key}"\s*:\s*(\d+)', clean_json2)
                         if m: res_flat[key] = int(m.group(1))
                         
-                    for key in ["readiness", "gap", "recommendation"]:
+                    for key in ["readiness", "missingInformation", "recommendation"]:
                         m = re.search(fr'"{key}"\s*:\s*"([^"]+)"', clean_json2)
                         if m: res_flat[key] = m.group(1)
+                        
+                # Just in case it still outputs a number for missingInformation
+                missing_info = str(res_flat.get("missingInformation", res_flat.get("gap", "Missing context")))
+                if missing_info.isdigit() or len(missing_info) < 4:
+                    missing_info = "Details are incomplete or ambiguous."
                         
                 res_data2 = {
                     "qualityScore": res_flat.get("qualityScore", 65),
@@ -120,7 +124,7 @@ Format:
                         "completeness": {"score": res_flat.get("completenessScore", 20), "maxScore": 40, "reason": res_flat.get("completenessReason", "")},
                         "context": {"score": res_flat.get("contextScore", 15), "maxScore": 30, "reason": res_flat.get("contextReason", "")}
                     },
-                    "gaps": [{"issue": res_flat.get("gap", "Missing context"), "why": "", "suggestion": "", "priority": "High"}],
+                    "gaps": [{"issue": missing_info, "why": "", "suggestion": "", "priority": "High"}],
                     "recommendations": [res_flat.get("recommendation", "Refine description")],
                     "aiAgentReady": res_flat.get("aiReady", False)
                 }
