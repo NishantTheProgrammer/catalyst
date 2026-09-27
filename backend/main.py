@@ -3,8 +3,20 @@ import uuid
 from typing import Optional
 from fastapi import FastAPI, Depends
 from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
+import requests
+from requests.auth import HTTPBasicAuth
+
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="NASA Reviewer API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Since it's local dev, allow all to be safe against different localhosts
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/nasadb")
 engine = create_engine(DATABASE_URL, echo=True)
@@ -44,26 +56,57 @@ def get_session():
 
 @app.post("/api/sync")
 def sync_jira_tickets(session: Session = Depends(get_session)):
-    """Mock endpoint to ingest tickets into Postgres"""
-    # In a real scenario, this would use Jira MCP to fetch real tickets
+    """Fetch tickets from Jira API and ingest them into Postgres"""
+    jira_url = os.getenv("JIRA_URL")
+    jira_user = os.getenv("JIRA_USERNAME")
+    jira_token = os.getenv("JIRA_API_TOKEN")
+
+    if not jira_url or not jira_user or not jira_token:
+        return {"status": "Error", "message": "Jira credentials missing in .env"}
+
+    url = f"{jira_url.rstrip('/')}/rest/api/2/search"
+    query = {
+        "jql": "order by created DESC",
+        "maxResults": 15,
+        "fields": "summary,description,status"
+    }
+    auth = HTTPBasicAuth(jira_user, jira_token)
+    headers = {"Accept": "application/json"}
     
-    mock_tickets = [
-        Ticket(jira_id=f"NASA-{uuid.uuid4().hex[:4].upper()}", title="Customer balance incorrect", description="The customer balance is showing incorrectly after the latest transaction.", status="Open"),
-        Ticket(jira_id=f"NASA-{uuid.uuid4().hex[:4].upper()}", title="Wrong customer balance displayed", description="Intermittent issue where balance mismatches the backend.", status="Open"),
-        Ticket(jira_id=f"NASA-{uuid.uuid4().hex[:4].upper()}", title="ETL pipeline failure in Payment module", description="Data transformation failed during nightly batch.", status="In Progress"),
-        Ticket(jira_id=f"NASA-{uuid.uuid4().hex[:4].upper()}", title="Legacy API returning 500", description="Old checkout API is sporadically throwing errors.", status="Open"),
-        Ticket(jira_id=f"NASA-{uuid.uuid4().hex[:4].upper()}", title="Button missing on checkout", description="The UI button for submitting payments is missing on Safari.", status="Open")
-    ]
+    try:
+        response = requests.get(url, headers=headers, params=query, auth=auth, timeout=10)
+        if response.status_code != 200:
+            return {"status": "Error", "message": f"Failed to fetch from Jira: {response.text}"}
+    except Exception as e:
+        return {"status": "Error", "message": f"Request failed: {str(e)}"}
+        
+    data = response.json()
+    issues = data.get("issues", [])
     
     count = 0
-    for ticket in mock_tickets:
-        existing = session.exec(select(Ticket).where(Ticket.title == ticket.title)).first()
+    for issue in issues:
+        jira_id = issue["key"]
+        fields = issue.get("fields", {})
+        title = fields.get("summary", "")
+        description = fields.get("description") or "No description provided."
+        if isinstance(description, dict):
+            # In case the API returns ADF (Atlassian Document Format) despite asking for v2
+            description = "Complex formatting omitted. See Jira for full description."
+            
+        status = fields.get("status", {}).get("name", "Unknown")
+        
+        existing = session.exec(select(Ticket).where(Ticket.jira_id == jira_id)).first()
         if not existing:
-            session.add(ticket)
+            new_ticket = Ticket(
+                jira_id=jira_id,
+                title=title,
+                description=description[:500],
+                status=status
+            )
+            session.add(new_ticket)
             count += 1
             
     session.commit()
-    
     return {"status": "Sync completed successfully", "new_tickets_ingested": count}
 
 @app.get("/api/tickets")
