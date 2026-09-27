@@ -31,6 +31,7 @@ export default function Home() {
   const [syncing, setSyncing] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [maxResults, setMaxResults] = useState(15);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [summary, setSummary] = useState({ overall_status: "Unknown", summary_text: "Based on current defect trend" });
 
   const fetchTickets = async () => {
@@ -254,7 +255,13 @@ export default function Home() {
                     dataKey="value"
                   >
                     {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={COLORS[index % COLORS.length]} 
+                        onClick={() => setSelectedCategory(selectedCategory === entry.name ? null : entry.name)}
+                        className="cursor-pointer transition-opacity duration-300 hover:opacity-80"
+                        style={{ opacity: selectedCategory && selectedCategory !== entry.name ? 0.3 : 1 }}
+                      />
                     ))}
                   </Pie>
                   <RechartsTooltip 
@@ -266,7 +273,13 @@ export default function Home() {
             </div>
             <div className="flex flex-wrap justify-center gap-3">
               {categoryData.map((entry, index) => (
-                <div key={entry.name} className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div 
+                  key={entry.name} 
+                  onClick={() => setSelectedCategory(selectedCategory === entry.name ? null : entry.name)}
+                  className={`flex items-center gap-2 text-xs cursor-pointer transition-all ${
+                    selectedCategory && selectedCategory !== entry.name ? 'opacity-30' : 'opacity-100 hover:text-white'
+                  } ${!selectedCategory ? 'text-muted-foreground' : ''}`}
+                >
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
                   {entry.name} ({entry.value})
                 </div>
@@ -307,7 +320,9 @@ export default function Home() {
       {/* Ticket List */}
       <div className="glass-panel rounded-2xl overflow-hidden mt-4 animate-fade-in animate-delay-3">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
-          <h2 className="text-xl font-semibold">Recent Defect Activity</h2>
+          <h2 className="text-xl font-semibold">
+            Recent Defect Activity {selectedCategory && <span className="text-primary text-sm ml-2 px-2 py-1 bg-primary/10 rounded-full">Filtering by: {selectedCategory}</span>}
+          </h2>
         </div>
         
         <div className="p-6 flex flex-col gap-4">
@@ -315,13 +330,20 @@ export default function Home() {
             <div className="flex justify-center py-12">
               <RefreshCw className="w-8 h-8 text-primary animate-spin opacity-50" />
             </div>
-          ) : tickets.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No tickets found. Click "Sync Jira" to fetch data.
-            </div>
-          ) : (
-            tickets.map((ticket) => (
-              <div key={ticket.id} className="glass-card p-5 rounded-xl flex flex-col md:flex-row gap-6 transition-all hover:bg-white/[0.03]">
+          ) : (() => {
+            const displayedTickets = tickets.filter(t => {
+              if (!selectedCategory) return true;
+              if (!t.is_processed || !t.analysis) return false;
+              return t.analysis.category === selectedCategory;
+            });
+
+            return displayedTickets.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                {tickets.length > 0 ? `No tickets found for category "${selectedCategory}".` : 'No tickets found. Click "Sync Jira" to fetch data.'}
+              </div>
+            ) : (
+              displayedTickets.map((ticket) => (
+                <div key={ticket.id} className="glass-card p-5 rounded-xl flex flex-col md:flex-row gap-6 transition-all hover:bg-white/[0.03]">
                 
                 {/* Ticket Details */}
                 <div className="flex-1 flex flex-col gap-2">
@@ -373,7 +395,7 @@ export default function Home() {
                 </div>
               </div>
             ))
-          )}
+          )})()}
         </div>
       </div>
     </main>
