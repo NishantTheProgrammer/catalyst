@@ -80,10 +80,11 @@ Evaluate the quality of this Jira ticket for a developer.
 Title: {ticket.title}
 Description: {ticket.description}
 
-Evaluate these 9 criteria (0 to max): Title Clarity (10), Problem Statement (15), Expected Behavior (15), Acceptance Criteria (20), Scope Definition (10), Technical Context (10), Reproducibility (5), Dependencies (5), AI Agent Readiness (10).
+Evaluate ONLY 3 criteria: Clarity (30), Completeness (40), Context (30).
+Keep reasoning very brief (1 sentence). Output ONLY valid JSON.
 
 Reply STRICTLY in this JSON format:
-{{"qualityScore": 85, "qualityLevel": "Good", "implementationReadiness": "Ready", "criteriaScores": {{"titleClarity": {{"score": 10, "maxScore": 10, "reason": "..."}}, "problemStatement": {{"score": 15, "maxScore": 15, "reason": "..."}}, "expectedBehavior": {{"score": 15, "maxScore": 15, "reason": "..."}}, "acceptanceCriteria": {{"score": 20, "maxScore": 20, "reason": "..."}}, "scopeDefinition": {{"score": 10, "maxScore": 10, "reason": "..."}}, "technicalContext": {{"score": 10, "maxScore": 10, "reason": "..."}}, "reproducibility": {{"score": 5, "maxScore": 5, "reason": "..."}}, "dependencies": {{"score": 5, "maxScore": 5, "reason": "..."}}, "aiAgentReadiness": {{"score": 10, "maxScore": 10, "reason": "..."}} }}, "gaps": [{{"issue": "...", "why": "...", "suggestion": "...", "priority": "..."}}], "recommendations": ["..."], "aiAgentReady": true}}
+{{"qualityScore": 85, "qualityLevel": "Good", "implementationReadiness": "Ready", "criteriaScores": {{"clarity": {{"score": 25, "maxScore": 30, "reason": "..."}}, "completeness": {{"score": 35, "maxScore": 40, "reason": "..."}}, "context": {{"score": 25, "maxScore": 30, "reason": "..."}} }}, "gaps": [{{"issue": "...", "why": "...", "suggestion": "...", "priority": "..."}}], "recommendations": ["..."], "aiAgentReady": true}}
 """
                 response2 = llm.invoke([HumanMessage(content=prompt2)])
                 match2 = re.search(r'\{.*?\}', response2.content, re.DOTALL)
