@@ -1,12 +1,21 @@
 import os
 import uuid
+from typing import Optional
 from fastapi import FastAPI, Depends
-from sqlmodel import SQLModel, Field, create_engine, Session, select
+from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 
 app = FastAPI(title="NASA Reviewer API")
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/nasadb")
 engine = create_engine(DATABASE_URL, echo=True)
+
+class AnalysisResult(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    ticket_id: int = Field(foreign_key="ticket.id")
+    category: str
+    confidence: int
+    reason: str
+    ticket: Optional["Ticket"] = Relationship(back_populates="analysis")
 
 class Ticket(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -15,13 +24,7 @@ class Ticket(SQLModel, table=True):
     description: str
     status: str
     is_processed: bool = Field(default=False)
-
-class AnalysisResult(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    ticket_id: int = Field(foreign_key="ticket.id")
-    category: str
-    confidence: int
-    reason: str
+    analysis: Optional[AnalysisResult] = Relationship(back_populates="ticket")
 
 @app.on_event("startup")
 def on_startup():
@@ -67,7 +70,12 @@ def sync_jira_tickets(session: Session = Depends(get_session)):
 def get_tickets(session: Session = Depends(get_session)):
     """Fetch all tickets to display on the frontend"""
     tickets = session.exec(select(Ticket).order_by(Ticket.id.desc())).all()
-    return tickets
+    response = []
+    for t in tickets:
+        data = t.model_dump()
+        data["analysis"] = t.analysis.model_dump() if t.analysis else None
+        response.append(data)
+    return response
 
 @app.post("/api/process")
 def process_tickets():
