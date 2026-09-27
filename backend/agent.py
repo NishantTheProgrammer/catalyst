@@ -79,11 +79,11 @@ def analyze_tickets(state: GraphState):
                 prompt2 = f"""
 Evaluate this Jira ticket. Title: {ticket.title}. Description: {ticket.description}
 
-Evaluate 3 criteria: Clarity (out of 30), Completeness (out of 40), Context (out of 30).
+Evaluate 5 criteria: Clarity (out of 20), Completeness (out of 20), Context (out of 20), Reproducibility (out of 20), Dependencies (out of 20).
 Keep reasoning brief. You MUST reply ONLY with valid JSON, flat structure.
 
 Format:
-{{"qualityScore": 85, "qualityLevel": "Good", "readiness": "Ready", "clarityScore": 25, "clarityReason": "...", "completenessScore": 35, "completenessReason": "...", "contextScore": 25, "contextReason": "...", "missingInformation": "...", "recommendation": "...", "aiReady": true}}
+{{"qualityScore": 85, "qualityLevel": "Good", "readiness": "Ready", "clarityScore": 15, "clarityReason": "...", "completenessScore": 15, "completenessReason": "...", "contextScore": 15, "contextReason": "...", "reproducibilityScore": 15, "reproducibilityReason": "...", "dependenciesScore": 15, "dependenciesReason": "...", "missingInformation": "...", "recommendation": "...", "aiReady": true}}
 """
                 response2 = llm.invoke([HumanMessage(content=prompt2)])
                 import re
@@ -102,7 +102,7 @@ Format:
                     level_match = re.search(r'"qualityLevel"\s*:\s*"([^"]+)"', clean_json2)
                     if level_match: res_flat["qualityLevel"] = level_match.group(1)
                     
-                    for key in ["clarityScore", "completenessScore", "contextScore"]:
+                    for key in ["clarityScore", "completenessScore", "contextScore", "reproducibilityScore", "dependenciesScore"]:
                         m = re.search(fr'"{key}"\s*:\s*(\d+)', clean_json2)
                         if m: res_flat[key] = int(m.group(1))
                         
@@ -120,9 +120,11 @@ Format:
                     "qualityLevel": res_flat.get("qualityLevel", "Fair"),
                     "implementationReadiness": res_flat.get("readiness", "Needs Clarification"),
                     "criteriaScores": {
-                        "clarity": {"score": res_flat.get("clarityScore", 15), "maxScore": 30, "reason": res_flat.get("clarityReason", "")},
-                        "completeness": {"score": res_flat.get("completenessScore", 20), "maxScore": 40, "reason": res_flat.get("completenessReason", "")},
-                        "context": {"score": res_flat.get("contextScore", 15), "maxScore": 30, "reason": res_flat.get("contextReason", "")}
+                        "clarity": {"score": res_flat.get("clarityScore", 15), "maxScore": 20, "reason": res_flat.get("clarityReason", "")},
+                        "completeness": {"score": res_flat.get("completenessScore", 15), "maxScore": 20, "reason": res_flat.get("completenessReason", "")},
+                        "context": {"score": res_flat.get("contextScore", 15), "maxScore": 20, "reason": res_flat.get("contextReason", "")},
+                        "reproducibility": {"score": res_flat.get("reproducibilityScore", 15), "maxScore": 20, "reason": res_flat.get("reproducibilityReason", "")},
+                        "dependencies": {"score": res_flat.get("dependenciesScore", 15), "maxScore": 20, "reason": res_flat.get("dependenciesReason", "")}
                     },
                     "gaps": [{"issue": missing_info, "why": "", "suggestion": "", "priority": "High"}],
                     "recommendations": [res_flat.get("recommendation", "Refine description")],

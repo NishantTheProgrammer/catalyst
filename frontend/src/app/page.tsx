@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Activity, AlertTriangle, CheckCircle, RefreshCw, Bot, Bug, FileWarning, Layers, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle, RefreshCw, Bot, Bug, FileWarning, Layers, ShieldCheck, ChevronDown, ChevronUp, X } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 type AnalysisResult = {
   id: number;
@@ -176,15 +176,17 @@ export default function Home() {
   }));
   
   const qualityMetrics = useMemo(() => {
-    let clarity = 0, completeness = 0, context = 0;
+    let clarity = 0, completeness = 0, context = 0, reproducibility = 0, dependencies = 0;
     let count = 0;
     tickets.forEach(t => {
       if (t.is_processed && t.quality && t.quality.criteria_scores) {
         count++;
-        // Normalize all to 100
-        clarity += ((t.quality.criteria_scores.clarity?.score || 0) / 30) * 100;
-        completeness += ((t.quality.criteria_scores.completeness?.score || 0) / 40) * 100;
-        context += ((t.quality.criteria_scores.context?.score || 0) / 30) * 100;
+        // All new criteria are max 20, normalize to 100
+        clarity += ((t.quality.criteria_scores.clarity?.score || 0) / 20) * 100;
+        completeness += ((t.quality.criteria_scores.completeness?.score || 0) / 20) * 100;
+        context += ((t.quality.criteria_scores.context?.score || 0) / 20) * 100;
+        reproducibility += ((t.quality.criteria_scores.reproducibility?.score || 0) / 20) * 100;
+        dependencies += ((t.quality.criteria_scores.dependencies?.score || 0) / 20) * 100;
       }
     });
     
@@ -193,7 +195,9 @@ export default function Home() {
     return [
       { metric: "Clarity", score: Math.round(clarity / count) },
       { metric: "Completeness", score: Math.round(completeness / count) },
-      { metric: "Context", score: Math.round(context / count) }
+      { metric: "Context", score: Math.round(context / count) },
+      { metric: "Reproducibility", score: Math.round(reproducibility / count) },
+      { metric: "Dependencies", score: Math.round(dependencies / count) }
     ];
   }, [tickets]);
   
@@ -427,11 +431,21 @@ export default function Home() {
 
       {/* Ticket List */}
       <div className="glass-panel rounded-2xl overflow-hidden mt-4 animate-fade-in animate-delay-3">
-        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
-          <h2 className="text-xl font-semibold">
+        <div className="p-6 border-b border-white/5 flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-black/20">
+          <h2 className="text-xl font-semibold flex items-center flex-wrap gap-2">
             Recent Defect Activity 
-            {selectedCategory && <span className="text-primary text-sm ml-2 px-2 py-1 bg-primary/10 rounded-full">Filtering by: {selectedCategory}</span>}
-            {selectedQuality && <span className="text-emerald-400 text-sm ml-2 px-2 py-1 bg-emerald-500/10 rounded-full">Filtering by: {selectedQuality} Quality</span>}
+            {selectedCategory && (
+              <span className="inline-flex items-center gap-1 text-primary text-sm px-2.5 py-1 bg-primary/10 hover:bg-primary/20 transition-colors rounded-full cursor-pointer" onClick={() => setSelectedCategory(null)}>
+                <span>Category: {selectedCategory}</span>
+                <X className="w-3 h-3 ml-1" />
+              </span>
+            )}
+            {selectedQuality && (
+              <span className="inline-flex items-center gap-1 text-emerald-400 text-sm px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors rounded-full cursor-pointer" onClick={() => setSelectedQuality(null)}>
+                <span>Quality: {selectedQuality}</span>
+                <X className="w-3 h-3 ml-1" />
+              </span>
+            )}
           </h2>
         </div>
         
