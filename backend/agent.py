@@ -115,16 +115,33 @@ Format:
                 if missing_info.isdigit() or len(missing_info) < 4:
                     missing_info = "Details are incomplete or ambiguous."
                         
+                # Calculate Total Score Dynamically to prevent AI math hallucinations
+                clarity_score = res_flat.get("clarityScore", 15)
+                completeness_score = res_flat.get("completenessScore", 15)
+                context_score = res_flat.get("contextScore", 15)
+                reproducibility_score = res_flat.get("reproducibilityScore", 15)
+                dependencies_score = res_flat.get("dependenciesScore", 15)
+                
+                total_score = clarity_score + completeness_score + context_score + reproducibility_score + dependencies_score
+                
+                # Derive quality level based on mathematically correct total score
+                if total_score >= 80:
+                    calculated_level = "Good"
+                elif total_score >= 60:
+                    calculated_level = "Fair"
+                else:
+                    calculated_level = "Poor"
+                        
                 res_data2 = {
-                    "qualityScore": res_flat.get("qualityScore", 65),
-                    "qualityLevel": res_flat.get("qualityLevel", "Fair"),
+                    "qualityScore": total_score,
+                    "qualityLevel": calculated_level,
                     "implementationReadiness": res_flat.get("readiness", "Needs Clarification"),
                     "criteriaScores": {
-                        "clarity": {"score": res_flat.get("clarityScore", 15), "maxScore": 20, "reason": res_flat.get("clarityReason", "")},
-                        "completeness": {"score": res_flat.get("completenessScore", 15), "maxScore": 20, "reason": res_flat.get("completenessReason", "")},
-                        "context": {"score": res_flat.get("contextScore", 15), "maxScore": 20, "reason": res_flat.get("contextReason", "")},
-                        "reproducibility": {"score": res_flat.get("reproducibilityScore", 15), "maxScore": 20, "reason": res_flat.get("reproducibilityReason", "")},
-                        "dependencies": {"score": res_flat.get("dependenciesScore", 15), "maxScore": 20, "reason": res_flat.get("dependenciesReason", "")}
+                        "clarity": {"score": clarity_score, "maxScore": 20, "reason": res_flat.get("clarityReason", "")},
+                        "completeness": {"score": completeness_score, "maxScore": 20, "reason": res_flat.get("completenessReason", "")},
+                        "context": {"score": context_score, "maxScore": 20, "reason": res_flat.get("contextReason", "")},
+                        "reproducibility": {"score": reproducibility_score, "maxScore": 20, "reason": res_flat.get("reproducibilityReason", "")},
+                        "dependencies": {"score": dependencies_score, "maxScore": 20, "reason": res_flat.get("dependenciesReason", "")}
                     },
                     "gaps": [{"issue": missing_info, "why": "", "suggestion": "", "priority": "High"}],
                     "recommendations": [res_flat.get("recommendation", "Refine description")],
