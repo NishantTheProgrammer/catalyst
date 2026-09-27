@@ -77,7 +77,7 @@ def sync_jira_tickets(session: Session = Depends(get_session)):
 
     url = f"{jira_url.rstrip('/')}/rest/api/3/search/jql"
     payload = {
-        "jql": "created >= -30d order by created DESC",
+        "jql": "project = SM AND created >= -30d order by created DESC",
         "maxResults": 15,
         "fields": ["summary", "description", "status"]
     }
