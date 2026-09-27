@@ -33,59 +33,57 @@ def classify_defects(state: GraphState):
         return {"classifications": []}
     
     classifications = []
-    for ticket in tickets:
-        # Fallback to mock classification if API key is invalid/missing
-        try:
-            prompt = f"Classify this Jira ticket into one category (Code defect, Data defect, Requirement gap, Environment issue). Title: {ticket.title}. Description: {ticket.description}. Reply in strictly JSON format: {{\"category\": \"...\", \"confidence\": 90, \"reason\": \"...\"}}"
-            response = llm.invoke([HumanMessage(content=prompt)])
-            import re
-            match = re.search(r'\{.*?\}', response.content, re.DOTALL)
-            if match:
-                clean_json = match.group(0)
-            else:
-                clean_json = response.content.strip('`').replace('json\n', '').strip()
+    with Session(engine) as session:
+        for ticket in tickets:
+            try:
+                prompt = f"Classify this Jira ticket into one category (Code defect, Data defect, Requirement gap, Environment issue). Title: {ticket.title}. Description: {ticket.description}. Reply in strictly JSON format: {{\"category\": \"...\", \"confidence\": 90, \"reason\": \"...\"}}"
+                response = llm.invoke([HumanMessage(content=prompt)])
+                import re
+                match = re.search(r'\{.*?\}', response.content, re.DOTALL)
+                if match:
+                    clean_json = match.group(0)
+                else:
+                    clean_json = response.content.strip('`').replace('json\n', '').strip()
+                    
+                res_data = json.loads(clean_json)
+                category = res_data.get("category", "Unknown")
+                confidence = res_data.get("confidence", 0)
+                reason = res_data.get("reason", "")
+            except Exception as e:
+                print(f"LLM Error: {e}")
+                category = "Data defect" if "ETL" in ticket.title else "Code defect"
+                if "legacy" in ticket.title.lower(): category = "Legacy behaviour"
+                confidence = 85
+                reason = "AI fallback: Mapped based on keyword heuristics due to missing API key."
                 
-            res_data = json.loads(clean_json)
-            classifications.append({"ticket_id": ticket.id, **res_data})
-        except Exception as e:
-            print(f"LLM Error: {e}")
-            category = "Data defect" if "ETL" in ticket.title else "Code defect"
-            if "legacy" in ticket.title.lower(): category = "Legacy behaviour"
             classifications.append({
                 "ticket_id": ticket.id,
                 "category": category,
-                "confidence": 85,
-                "reason": "AI fallback: Mapped based on keyword heuristics due to missing API key."
+                "confidence": confidence,
+                "reason": reason
             })
             
-    return {"classifications": classifications}
-
-def update_db(state: GraphState):
-    classifications = state.get("classifications", [])
-    tickets = state.get("tickets", [])
-    if not classifications:
-        return {"tickets": []}
-        
-    with Session(engine) as session:
-        # Insert analysis results
-        for item in classifications:
+            # Update DB immediately so frontend can poll progress
             analysis = AnalysisResult(
-                ticket_id=item["ticket_id"],
-                category=item.get("category", "Unknown"),
-                confidence=item.get("confidence", 0),
-                reason=item.get("reason", "")
+                ticket_id=ticket.id, 
+                category=category, 
+                confidence=confidence, 
+                reason=reason
             )
             session.add(analysis)
             
-        # Update tickets to processed
-        for ticket in tickets:
             db_ticket = session.get(Ticket, ticket.id)
             if db_ticket:
                 db_ticket.is_processed = True
                 session.add(db_ticket)
                 
-        session.commit()
-    return {"tickets": tickets}
+            session.commit()
+            
+    return {"classifications": classifications}
+
+def update_db(state: GraphState):
+    # DB update moved to classify_defects to enable UI progress polling
+    return {"tickets": state.get("tickets", [])}
 
 # Build LangGraph workflow
 workflow = StateGraph(GraphState)

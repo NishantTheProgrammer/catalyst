@@ -44,6 +44,19 @@ export default function Home() {
     fetchTickets();
   }, []);
 
+  // Poll for tickets while AI is processing
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (processing) {
+      interval = setInterval(() => {
+        fetchTickets();
+      }, 2000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [processing]);
+
   const handleSync = async () => {
     setSyncing(true);
     try {
@@ -60,11 +73,11 @@ export default function Home() {
     setProcessing(true);
     try {
       await fetch("http://localhost:8000/api/process", { method: "POST" });
-      await fetchTickets();
     } catch (err) {
       console.error("Failed to process", err);
     } finally {
       setProcessing(false);
+      await fetchTickets(); // Final sync when done
     }
   };
 
