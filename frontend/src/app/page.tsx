@@ -206,8 +206,15 @@ export default function Home() {
                       </p>
                     </div>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-sm text-gray-500">
-                      Unprocessed - Awaiting AI Analysis
+                    <div className="h-full flex flex-col items-center justify-center text-sm text-gray-500 gap-2">
+                      {processing ? (
+                        <>
+                           <Bot className="w-5 h-5 text-primary animate-pulse" />
+                           <span className="animate-pulse text-primary/80">AI Analyzing...</span>
+                        </>
+                      ) : (
+                        "Unprocessed - Awaiting AI Analysis"
+                      )}
                     </div>
                   )}
                 </div>

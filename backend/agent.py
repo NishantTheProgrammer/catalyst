@@ -24,7 +24,7 @@ else:
 
 def fetch_unprocessed(state: GraphState):
     with Session(engine) as session:
-        unprocessed = session.exec(select(Ticket).where(Ticket.is_processed == False)).all()
+        unprocessed = session.exec(select(Ticket).where(Ticket.is_processed == False).order_by(Ticket.id.desc())).all()
         return {"tickets": unprocessed}
 
 def classify_defects(state: GraphState):
