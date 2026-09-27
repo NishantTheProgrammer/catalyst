@@ -90,10 +90,27 @@ Format:
                 match2 = re.search(r'\{.*?\}', response2.content, re.DOTALL)
                 clean_json2 = match2.group(0) if match2 else response2.content.strip('`').replace('json\n', '').strip()
                 
-                # Fix common trailing comma issues for small models
                 clean_json2 = re.sub(r',\s*\}', '}', clean_json2)
-                res_flat = json.loads(clean_json2)
-                
+                try:
+                    res_flat = json.loads(clean_json2)
+                except Exception as json_err:
+                    print(f"JSON Parse Error, falling back to regex: {json_err}")
+                    res_flat = {}
+                    # Try to regex extract key integer and string fields
+                    score_match = re.search(r'"qualityScore"\s*:\s*(\d+)', clean_json2)
+                    if score_match: res_flat["qualityScore"] = int(score_match.group(1))
+                    
+                    level_match = re.search(r'"qualityLevel"\s*:\s*"([^"]+)"', clean_json2)
+                    if level_match: res_flat["qualityLevel"] = level_match.group(1)
+                    
+                    for key in ["clarityScore", "completenessScore", "contextScore"]:
+                        m = re.search(fr'"{key}"\s*:\s*(\d+)', clean_json2)
+                        if m: res_flat[key] = int(m.group(1))
+                        
+                    for key in ["readiness", "gap", "recommendation"]:
+                        m = re.search(fr'"{key}"\s*:\s*"([^"]+)"', clean_json2)
+                        if m: res_flat[key] = m.group(1)
+                        
                 res_data2 = {
                     "qualityScore": res_flat.get("qualityScore", 65),
                     "qualityLevel": res_flat.get("qualityLevel", "Fair"),

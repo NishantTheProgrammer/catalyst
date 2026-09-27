@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Activity, AlertTriangle, CheckCircle, RefreshCw, Bot, Bug, FileWarning, Layers, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from 'recharts';
-
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 type AnalysisResult = {
   id: number;
   category: string;
@@ -175,6 +174,28 @@ export default function Home() {
     value: qualityTickets.filter(t => t.quality!.quality_level === level).length
   }));
   
+  const qualityMetrics = useMemo(() => {
+    let clarity = 0, completeness = 0, context = 0;
+    let count = 0;
+    tickets.forEach(t => {
+      if (t.is_processed && t.quality && t.quality.criteria_scores) {
+        count++;
+        // Normalize all to 100
+        clarity += ((t.quality.criteria_scores.clarity?.score || 0) / 30) * 100;
+        completeness += ((t.quality.criteria_scores.completeness?.score || 0) / 40) * 100;
+        context += ((t.quality.criteria_scores.context?.score || 0) / 30) * 100;
+      }
+    });
+    
+    if (count === 0) return [];
+    
+    return [
+      { metric: "Clarity", score: Math.round(clarity / count) },
+      { metric: "Completeness", score: Math.round(completeness / count) },
+      { metric: "Context", score: Math.round(context / count) }
+    ];
+  }, [tickets]);
+  
   return (
     <main className="min-h-screen p-8 max-w-7xl mx-auto flex flex-col gap-8">
       {/* Header */}
@@ -288,7 +309,7 @@ export default function Home() {
 
       {/* Charts Row */}
       {processedCount > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in animate-delay-2 mt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fade-in animate-delay-2 mt-4">
           <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
             <h3 className="text-xl font-semibold">Quality Distribution</h3>
             <div className="h-[250px] w-full">
@@ -304,6 +325,29 @@ export default function Home() {
                   <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+          
+          <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+            <h3 className="text-xl font-semibold">Criteria Averages (out of 100)</h3>
+            <div className="h-[250px] w-full">
+              {qualityMetrics.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={qualityMetrics}>
+                    <PolarGrid stroke="rgba(255,255,255,0.2)" />
+                    <PolarAngleAxis dataKey="metric" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} />
+                    <Radar name="Score" dataKey="score" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
+                    <RechartsTooltip 
+                      contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                  Waiting for data...
+                </div>
+              )}
             </div>
           </div>
           
