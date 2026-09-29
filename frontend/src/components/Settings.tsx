@@ -58,7 +58,13 @@ export default function Settings() {
     
     try {
       const payload = {
-        ...configs,
+        jira_url: configs.jiraUrl,
+        jira_username: configs.jiraUsername,
+        jira_api_token: configs.jiraApiToken,
+        llm_provider: configs.llmProvider,
+        openAiKey: configs.openAiKey, // backend looks for openAiKey specifically
+        ollama_base_url: configs.ollamaBaseUrl,
+        ollama_model: configs.ollamaModel,
         jira_selected_projects: configs.jiraSelectedProjects,
         jira_sync_days: Number(configs.jiraSyncDays),
         jira_sync_limit: Number(configs.jiraSyncLimit)
@@ -188,30 +194,6 @@ export default function Settings() {
                   onChange={handleChange}
                   className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
                   placeholder="Enter your Jira API token"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm text-muted-foreground font-medium">Sync History (Days Back)</label>
-                <input 
-                  type="number" 
-                  name="jiraSyncDays"
-                  value={configs.jiraSyncDays}
-                  onChange={handleChange}
-                  className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
-                  min="1"
-                  max="365"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm text-muted-foreground font-medium">Max Tickets to Sync</label>
-                <input 
-                  type="number" 
-                  name="jiraSyncLimit"
-                  value={configs.jiraSyncLimit}
-                  onChange={handleChange}
-                  className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
-                  min="1"
-                  max="200"
                 />
               </div>
             </div>

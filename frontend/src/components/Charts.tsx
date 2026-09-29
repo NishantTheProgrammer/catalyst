@@ -129,26 +129,24 @@ export default function Charts({
         <h3 className="text-xl font-semibold">Defects Over Time</h3>
         <div className="h-[250px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis dataKey="date" stroke="rgba(255,255,255,0.4)" fontSize={12} tickMargin={10} />
               <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} allowDecimals={false} />
               <RechartsTooltip 
                 contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
               />
               {categories.map((category, index) => (
-                <Line 
+                <Bar 
                   key={category}
-                  type="monotone" 
                   dataKey={category} 
                   name={category}
-                  stroke={colors[index % colors.length]} 
-                  strokeWidth={3} 
-                  dot={{ r: 4, fill: colors[index % colors.length] }} 
-                  activeDot={{ r: 6 }} 
+                  stackId="a"
+                  fill={colors[index % colors.length]} 
                 />
               ))}
-            </LineChart>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </div>

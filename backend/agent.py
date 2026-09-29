@@ -179,32 +179,38 @@ def generate_project_summary(tickets_data: list[tuple[str, str]]) -> tuple[str, 
     """Generates an AI project summary from ticket titles and categories."""
     summary_prompt = SUMMARY_PROMPT_HEADER
     
-    for title, cat in tickets_data:
+    # Optimize by providing category aggregates and sampling a max of 20 recent tickets
+    from collections import Counter
+    category_counts = Counter([cat for _, cat in tickets_data])
+    
+    summary_prompt += f"Total Tickets: {len(tickets_data)}\n"
+    summary_prompt += "Ticket Category Breakdown:\n"
+    for cat, count in category_counts.items():
+        summary_prompt += f"- {cat}: {count} tickets\n"
+        
+    summary_prompt += "\nSample of Recent Tickets:\n"
+    for title, cat in tickets_data[-20:]:
         summary_prompt += f"Ticket: {title}, AI Category: {cat}\n"
     
     summary_prompt += SUMMARY_PROMPT_FOOTER
     
     try:
         response = llm.invoke([HumanMessage(content=summary_prompt)])
-        import re, json
-        match = re.search(r'\{.*?\}', response.content, re.DOTALL)
-        clean_json = match.group(0) if match else response.content.strip('`').replace('json\n', '').strip()
+        content = response.content.strip()
         
-        try:
-            res_data = json.loads(clean_json)
-            status = res_data.get("overall_status", "Watch")
-            text = res_data.get("summary_text") or res_data.get("project_health_summary", "Failed to generate summary.")
-        except json.JSONDecodeError:
-            status_match = re.search(r'"?overall_status"?\s*:\s*"?([^",\}]+)"?', response.content)
-            text_match = re.search(r'"?(summary_text|project_health_summary)"?\s*:\s*"?([\s\S]+?)"?\}?\s*$', response.content)
-            status = status_match.group(1).strip() if status_match else "Watch"
-            if text_match:
-                text = text_match.group(2).strip()
-                if text.endswith('}'): text = text[:-1].strip()
-                if text.endswith('"'): text = text[:-1].strip()
-            else:
-                text = response.content.replace('"', '').strip()
+        status = "Watch"
+        text = content
+        
+        if "---" in content:
+            parts = content.split("---", 1)
+            header_part = parts[0].strip()
+            text = parts[1].strip()
             
+            import re
+            status_match = re.search(r'STATUS:\s*(Stable|At Risk|Critical)', header_part, re.IGNORECASE)
+            if status_match:
+                status = status_match.group(1).title()
+        
     except Exception as e:
         print(f"Summary Error: {e}")
         status = "Watch"

@@ -16,20 +16,41 @@ export function useDashboardStats(tickets: Ticket[]) {
 
     const categories = Array.from(new Set(tickets.filter(t => t.is_processed && t.analysis).map(t => t.analysis!.category)));
 
+    const dates = tickets.filter(t => t.created_date).map(t => new Date(t.created_date!));
+    let groupType = "day";
+    if (dates.length > 0) {
+      dates.sort((a, b) => a.getTime() - b.getTime());
+      const diffDays = (dates[dates.length - 1].getTime() - dates[0].getTime()) / (1000 * 3600 * 24);
+      if (diffDays > 120) groupType = "month";
+      else if (diffDays > 30) groupType = "week";
+    }
+
     const trendData = Object.entries(
       tickets.reduce((acc, t) => {
-        const date = t.created_date ? t.created_date.substring(0, 10) : "Unknown";
-        if (date !== "Unknown" && t.is_processed && t.analysis) {
-          if (!acc[date]) {
-            acc[date] = { date };
-            categories.forEach(c => acc[date][c] = 0);
-          }
-          const cat = t.analysis.category;
-          acc[date][cat] = (acc[date][cat] || 0) + 1;
+        if (!t.created_date || !t.is_processed || !t.analysis) return acc;
+        
+        let dateKey = t.created_date.substring(0, 10);
+        if (groupType === "month") {
+          const d = new Date(t.created_date);
+          dateKey = d.toLocaleString('default', { month: 'short', year: 'numeric' });
+        } else if (groupType === "week") {
+          const d = new Date(t.created_date);
+          d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+          dateKey = `Week of ${d.toLocaleString('default', { month: 'short', day: 'numeric' })}`;
         }
+        
+        if (!acc[dateKey]) {
+          acc[dateKey] = { date: dateKey, sortKey: t.created_date };
+          categories.forEach(c => acc[dateKey][c] = 0);
+        }
+        
+        acc[dateKey][t.analysis.category] = (acc[dateKey][t.analysis.category] || 0) + 1;
         return acc;
       }, {} as Record<string, any>)
-    ).sort((a, b) => a[0].localeCompare(b[0])).map(([_, data]) => data);
+    ).sort((a, b) => a[1].sortKey.localeCompare(b[1].sortKey)).map(([_, data]) => {
+      const { sortKey, ...rest } = data;
+      return rest;
+    });
     
     const qualityTickets = tickets.filter(t => t.is_processed && t.quality);
     const avgQuality = qualityTickets.length ? Math.round(qualityTickets.reduce((acc, t) => acc + t.quality!.quality_score, 0) / qualityTickets.length) : 0;

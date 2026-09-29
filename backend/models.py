@@ -51,6 +51,7 @@ class AppSettings(SQLModel, table=True):
     jira_selected_projects: str = Field(default="")
     jira_sync_limit: int = Field(default=30)
     jira_sync_days: int = Field(default=30)
+    is_setup_complete: bool = Field(default=False)
     llm_provider: str = Field(default_factory=lambda: "openai" if os.getenv("OPENAI_API_KEY") else "ollama")
     openai_api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
     ollama_base_url: str = Field(default_factory=lambda: os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434"))

@@ -49,6 +49,8 @@ def update_settings(updates: dict, session: Session = Depends(get_session)):
     elif updates.get("openai_api_key") and updates["openai_api_key"] != "********":
         settings.openai_api_key = updates["openai_api_key"]
 
+    settings.is_setup_complete = True
+
     session.add(settings)
     session.commit()
     session.refresh(settings)
@@ -78,14 +80,21 @@ def test_jira_connection(req: JiraTestRequest, session: Session = Depends(get_se
         else:
             raise HTTPException(status_code=400, detail="Real API token not found in database. Please re-enter it.")
             
-    url = f"{req.jira_url.rstrip('/')}/rest/api/3/project"
+    myself_url = f"{req.jira_url.rstrip('/')}/rest/api/3/myself"
+    projects_url = f"{req.jira_url.rstrip('/')}/rest/api/3/project"
     auth = HTTPBasicAuth(req.jira_username, token)
     headers = {"Accept": "application/json"}
     
     try:
-        response = requests.get(url, headers=headers, auth=auth, timeout=10)
+        # First verify authentication is actually valid (not falling back to anonymous)
+        me_res = requests.get(myself_url, headers=headers, auth=auth, timeout=10)
+        if me_res.status_code != 200:
+            raise HTTPException(status_code=400, detail="Authentication failed. Please check your username and API token.")
+            
+        # Then get projects
+        response = requests.get(projects_url, headers=headers, auth=auth, timeout=10)
         if response.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"Failed to connect to Jira: {response.text}")
+            raise HTTPException(status_code=400, detail=f"Failed to fetch projects: {response.status_code}")
         
         projects = response.json()
         return {

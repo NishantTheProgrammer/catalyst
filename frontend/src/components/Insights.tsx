@@ -14,8 +14,8 @@ type InsightsProps = {
 
 export default function Insights({ summary, tickets, processing, handleProcess }: InsightsProps) {
   const processedTickets = tickets.filter(t => t.is_processed && t.analysis);
-  const codeDefects = processedTickets.filter(t => t.analysis?.category === "Code defect").length;
-  const reqGaps = processedTickets.filter(t => t.analysis?.category === "Requirement gap").length;
+  const codeDefects = processedTickets.filter(t => t.analysis?.category === "Code").length;
+  const reqGaps = processedTickets.filter(t => t.analysis?.category === "Requirement").length;
   
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
