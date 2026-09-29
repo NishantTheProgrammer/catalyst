@@ -9,6 +9,7 @@ import json
 import re
 from database import engine
 from models import Ticket, AnalysisResult, ProjectSummary, TicketQuality
+from prompts import CATEGORIZE_PROMPT_TEMPLATE, QUALITY_PROMPT_TEMPLATE, SUMMARY_PROMPT_HEADER, SUMMARY_PROMPT_FOOTER
 
 class GraphState(TypedDict):
     tickets: List[Ticket]
@@ -42,7 +43,7 @@ def analyze_tickets(state: GraphState):
         for ticket in tickets:
             # --- 1. Classify Defect ---
             try:
-                prompt1 = f"Classify this Jira ticket into one of these categories strictly: Code, Data, Configuration, Documentation, Requirement, Legacy. Title: {ticket.title}. Description: {ticket.description}. Reply in strictly JSON format: {{\"category\": \"...\", \"confidence\": <integer 1-100>, \"reason\": \"...\"}}"
+                prompt1 = CATEGORIZE_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
                 response1 = llm.invoke([HumanMessage(content=prompt1)])
                 import re
                 match = re.search(r'\{.*?\}', response1.content, re.DOTALL)
@@ -78,15 +79,7 @@ def analyze_tickets(state: GraphState):
             # --- 2. Assess Quality ---
             # --- 2. Assess Quality ---
             try:
-                prompt2 = f"""
-Evaluate this Jira ticket. Title: {ticket.title}. Description: {ticket.description}
-
-Evaluate 5 criteria: Clarity (out of 20), Completeness (out of 20), Context (out of 20), Reproducibility (out of 20), Dependencies (out of 20).
-Keep reasoning brief. You MUST reply ONLY with valid JSON, flat structure.
-
-Format:
-{{"qualityScore": 85, "qualityLevel": "Good", "readiness": "Ready", "clarityScore": 15, "clarityReason": "...", "completenessScore": 15, "completenessReason": "...", "contextScore": 15, "contextReason": "...", "reproducibilityScore": 15, "reproducibilityReason": "...", "dependenciesScore": 15, "dependenciesReason": "...", "missingInformation": "...", "recommendation": "...", "aiReady": true}}
-"""
+                prompt2 = QUALITY_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
                 response2 = llm.invoke([HumanMessage(content=prompt2)])
                 import re
                 match2 = re.search(r'\{.*?\}', response2.content, re.DOTALL)
@@ -182,34 +175,14 @@ Format:
             
     return {"classifications": classifications, "qualities": qualities}
 
-def update_db(state: GraphState):
-    tickets = state.get("tickets", [])
-    classifications = state.get("classifications", [])
-    if not classifications:
-        return {"tickets": []}
-        
-    summary_prompt = """You are an expert Agile Project Manager and AI Analyst. Based on the following Jira tickets and their AI classifications, write a high-level, executive project health summary. 
-
-DO NOT just list the tickets. Instead, synthesize the data into insightful observations:
-1. **Current State & Trends:** Group similar issues (e.g., "Multiple deployment updates required").
-2. **Key Risks:** Identify systemic issues, data gaps, or critical bugs.
-3. **Strategic Recommendations:** Actionable next steps to improve project health.
-
-Use beautiful, professional rich markdown formatting (with **bolding** for emphasis, bullet points, and appropriate emojis). 
-
-VERY IMPORTANT: You must output strictly valid JSON. Escape all newlines in your markdown strictly as '\\n'.
-Your output MUST be a single JSON object with EXACTLY these two keys:
-{
-  "overall_status": "Stable",
-  "summary_text": "# Executive Summary\\n\\nYour markdown here..."
-}
-
-Data:
-"""
-    for t, c in zip(tickets, classifications):
-        summary_prompt += f"Ticket: {t.title}, AI Category: {c.get('category')}\n"
+def generate_project_summary(tickets_data: list[tuple[str, str]]) -> tuple[str, str]:
+    """Generates an AI project summary from ticket titles and categories."""
+    summary_prompt = SUMMARY_PROMPT_HEADER
     
-    summary_prompt += "\nReply in strictly JSON format: {\"overall_status\": \"...\", \"summary_text\": \"...\"}"
+    for title, cat in tickets_data:
+        summary_prompt += f"Ticket: {title}, AI Category: {cat}\n"
+    
+    summary_prompt += SUMMARY_PROMPT_FOOTER
     
     try:
         response = llm.invoke([HumanMessage(content=summary_prompt)])
@@ -236,6 +209,17 @@ Data:
         print(f"Summary Error: {e}")
         status = "Watch"
         text = "AI fallback summary: Several defects detected, further investigation recommended."
+        
+    return status, text
+
+def update_db(state: GraphState):
+    tickets = state.get("tickets", [])
+    classifications = state.get("classifications", [])
+    if not classifications:
+        return {"tickets": []}
+        
+    tickets_data = [(t.title, c.get('category')) for t, c in zip(tickets, classifications)]
+    status, text = generate_project_summary(tickets_data)
         
     with Session(engine) as session:
         summary = ProjectSummary(overall_status=status, summary_text=text)
