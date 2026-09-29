@@ -1,4 +1,14 @@
 from fastapi import APIRouter, BackgroundTasks
+from pydantic import BaseModel
+from typing import List, Optional
+
+class Message(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    query: str
+    history: Optional[List[Message]] = []
 
 router = APIRouter(prefix="/api")
 
@@ -38,3 +48,10 @@ def refresh_summary():
     """Regenerate the project summary based on all currently processed tickets"""
     run_summary_refresh()
     return {"status": "Summary refresh completed"}
+
+@router.post("/chat")
+def chat(request: ChatRequest):
+    """Query the RAG pipeline for insights on the current tickets"""
+    from rag import query_rag
+    answer = query_rag(request.query, request.history)
+    return {"answer": answer}

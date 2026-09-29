@@ -8,6 +8,7 @@ import TicketList from "@/components/TicketList";
 import Sidebar from "@/components/Sidebar";
 import Insights from "@/components/Insights";
 import Settings from "@/components/Settings";
+import Chatbot from "@/components/Chatbot";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Ticket, AnalysisResult, TicketQuality, CriteriaScore } from "@/types";
 
@@ -207,6 +208,8 @@ export default function Home() {
           )}
         </div>
       </main>
+      
+      <Chatbot />
     </div>
   );
 }

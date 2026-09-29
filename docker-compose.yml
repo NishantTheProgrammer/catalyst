@@ -20,6 +20,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./README.md:/docs/README.md
+      - ./USER_GUIDE.md:/docs/USER_GUIDE.md
     env_file: ./backend/.env
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/nasadb
