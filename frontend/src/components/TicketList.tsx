@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { RefreshCw, X, Bug, Layers, FileWarning, AlertTriangle, Bot, ChevronUp, ChevronDown } from "lucide-react";
+import React, { useState } from "react";
+import { RefreshCw, X, Bug, Layers, FileWarning, AlertTriangle, Bot, ChevronUp, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react";
 import { Ticket } from "@/types";
 
 type TicketListProps = {
@@ -53,7 +53,7 @@ export default function TicketList({
         </h2>
       </div>
       
-      <div className="p-6 flex flex-col gap-4">
+      <div className="w-full overflow-x-auto">
         {loading ? (
           <div className="flex justify-center py-12">
             <RefreshCw className="w-8 h-8 text-primary animate-spin opacity-50" />
@@ -70,146 +70,210 @@ export default function TicketList({
             return match;
           });
 
-          return displayedTickets.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              {tickets.length > 0 ? `No tickets found for selected filters.` : 'No tickets found. Click "Sync Jira" to fetch data.'}
-            </div>
-          ) : (
-            displayedTickets.map((ticket) => (
-              <div key={ticket.id} className="flex flex-col gap-2">
-                <div className="glass-card p-5 rounded-xl flex flex-col md:flex-row gap-6 transition-all hover:bg-white/[0.03]">
-                  
-                  {/* Ticket Details */}
-                  <div className="flex-1 flex flex-col gap-2">
-                    <div className="flex items-center gap-3">
-                      <a 
-                        href={ticket.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs font-mono px-2 py-1 bg-primary/20 hover:bg-primary/40 text-primary-foreground rounded transition-colors cursor-pointer"
-                      >
-                        {ticket.jira_id}
-                      </a>
-                      <h3 className="font-medium text-lg leading-tight">{ticket.title}</h3>
-                      {ticket.sprint && (
-                        <span className="text-xs font-mono px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
-                          {ticket.sprint}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-muted-foreground text-sm line-clamp-2 mt-1">
-                      {ticket.description}
-                    </p>
-                  </div>
-                  
-                  {/* AI Analysis Result */}
-                  <div className="w-full md:w-[450px] shrink-0 border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-6 flex flex-col justify-center">
-                    {ticket.is_processed && ticket.analysis ? (
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {getCategoryIcon(ticket.analysis.category)}
-                            <span className="font-medium text-sm">{ticket.analysis.category}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <span className="text-xs font-mono bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded flex items-center justify-center">
-                              {ticket.analysis.confidence}% CONF
-                            </span>
-                            {ticket.quality && (
-                              <button 
-                                onClick={() => setExpandedTicketId(expandedTicketId === ticket.id ? null : ticket.id)}
-                                className={`text-xs font-mono px-2 py-1 rounded cursor-pointer transition-colors flex items-center gap-1 ${
-                                  ticket.quality.quality_score >= 75 ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' :
-                                  ticket.quality.quality_score >= 60 ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' :
-                                  'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
-                                }`}
-                              >
-                                {ticket.quality.quality_score}/100 QUAL
-                                {expandedTicketId === ticket.id ? <ChevronUp className="w-3 h-3"/> : <ChevronDown className="w-3 h-3"/>}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1 italic">
-                          "{ticket.analysis.reason}"
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center text-sm text-gray-500 gap-2">
-                        {processing ? (
-                          <>
-                             <Bot className="w-5 h-5 text-primary animate-pulse" />
-                             <span className="animate-pulse text-primary/80">AI Analyzing...</span>
-                          </>
-                        ) : (
-                          "Unprocessed - Awaiting AI Analysis"
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Expanded Quality Details */}
-                {expandedTicketId === ticket.id && ticket.quality && (
-                  <div className="p-5 bg-black/40 rounded-xl border border-white/5 animate-fade-in text-sm text-gray-300 flex flex-col gap-6 ml-4 mr-4 mb-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider">Classification</span>
-                        <span className="font-medium text-white">{ticket.quality.quality_level}</span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider">Readiness</span>
-                        <span className="font-medium text-white">{ticket.quality.implementation_readiness}</span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider">AI Agent Ready</span>
-                        <span className="font-medium text-white">{ticket.quality.ai_agent_ready ? 'Yes' : 'No'}</span>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-medium text-white border-b border-white/10 pb-2 mb-3">Scoring Breakdown</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {Object.entries(ticket.quality.criteria_scores).map(([key, data]) => (
-                          <div key={key} className="flex flex-col bg-white/5 p-3 rounded-lg">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                              <span className="font-mono text-xs text-white">{data.score}/{data.maxScore}</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground leading-relaxed">{data.reason}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {(ticket.quality.gaps.length > 0 || ticket.quality.recommendations.length > 0) && (
-                      <div>
-                        <h4 className="font-medium text-amber-400 border-b border-amber-500/20 pb-2 mb-3">AI Actionable Feedback</h4>
-                        <div className="flex flex-col gap-3">
-                          {ticket.quality.gaps.map((gap, i) => (
-                            <div key={`gap-${i}`} className="bg-amber-500/5 border border-amber-500/10 p-3 rounded-lg flex flex-col gap-2">
-                              <div className="flex items-center gap-2">
-                                <AlertTriangle className="w-4 h-4 text-amber-400" />
-                                <span className="font-medium text-amber-200">Missing/Unclear: {gap.issue}</span>
-                              </div>
-                            </div>
-                          ))}
-                          {ticket.quality.recommendations.map((rec, i) => (
-                            <div key={`rec-${i}`} className="bg-blue-500/5 border border-blue-500/10 p-3 rounded-lg flex flex-col gap-2">
-                              <div className="flex items-center gap-2">
-                                <Bot className="w-4 h-4 text-blue-400" />
-                                <span className="font-medium text-blue-200">Recommendation: {rec}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+          if (displayedTickets.length === 0) {
+            return (
+              <div className="text-center py-12 text-muted-foreground">
+                {tickets.length > 0 ? `No tickets found for selected filters.` : 'No tickets found. Click "Sync Jira" to fetch data.'}
               </div>
-            ))
-          )})()}
+            );
+          }
+
+          return (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-sm text-muted-foreground bg-white/[0.01]">
+                  <th className="py-4 px-6 font-medium whitespace-nowrap">Ticket</th>
+                  <th className="py-4 px-6 font-medium whitespace-nowrap">Project</th>
+                  <th className="py-4 px-6 font-medium">Title</th>
+                  <th className="py-4 px-6 font-medium whitespace-nowrap">Sprint</th>
+                  <th className="py-4 px-6 font-medium whitespace-nowrap">Category</th>
+                  <th className="py-4 px-6 font-medium whitespace-nowrap">Quality</th>
+                  <th className="py-4 px-6 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedTickets.map((ticket) => {
+                  const isExpanded = expandedTicketId === ticket.id;
+                  const project = ticket.jira_id.includes('-') ? ticket.jira_id.split('-')[0] : 'Unknown';
+
+                  return (
+                    <React.Fragment key={ticket.id}>
+                      <tr className={`border-b border-white/5 transition-colors hover:bg-white/[0.03] ${isExpanded ? 'bg-white/[0.02]' : ''}`}>
+                        <td className="py-4 px-6">
+                          <a 
+                            href={ticket.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs font-mono px-2 py-1 bg-primary/20 hover:bg-primary/40 text-primary-foreground rounded transition-colors inline-block whitespace-nowrap"
+                          >
+                            {ticket.jira_id}
+                          </a>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="text-sm font-medium text-gray-300">{project}</span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="text-sm line-clamp-2" title={ticket.title}>{ticket.title}</span>
+                        </td>
+                        <td className="py-4 px-6">
+                          {ticket.sprint && ticket.sprint !== "Unassigned" ? (
+                            <span className="text-xs font-mono px-2 py-1 bg-blue-500/20 text-blue-400 rounded whitespace-nowrap">
+                              {ticket.sprint}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6">
+                          {ticket.is_processed && ticket.analysis ? (
+                            <div className="flex items-center gap-2 whitespace-nowrap">
+                              {getCategoryIcon(ticket.analysis.category)}
+                              <span className="text-sm font-medium">{ticket.analysis.category}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
+                              {processing ? <RefreshCw className="w-3 h-3 animate-spin" /> : null}
+                              {processing ? "Processing..." : "Pending"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6">
+                          {ticket.is_processed && ticket.quality ? (
+                            <span className={`text-xs font-mono px-2.5 py-1 rounded whitespace-nowrap ${
+                              ticket.quality.quality_score >= 75 ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                              ticket.quality.quality_score >= 60 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                              'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            }`}>
+                              {ticket.quality.quality_score} QUAL
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <button 
+                            onClick={() => setExpandedTicketId(isExpanded ? null : ticket.id)}
+                            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground hover:text-white"
+                          >
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </td>
+                      </tr>
+                      
+                      {/* Expanded Row Content */}
+                      {isExpanded && (
+                        <tr className="bg-black/30 border-b border-white/5 shadow-inner">
+                          <td colSpan={7} className="p-0">
+                            <div className="p-6 md:p-8 animate-fade-in flex flex-col gap-6">
+                              {/* Description Section */}
+                              <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                                <h4 className="font-medium text-white mb-2 flex items-center gap-2">
+                                  Description
+                                </h4>
+                                <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                  {ticket.description}
+                                </p>
+                              </div>
+
+                              {/* AI Analysis Details */}
+                              {ticket.is_processed && ticket.analysis && ticket.quality ? (
+                                <div className="flex flex-col gap-6">
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex flex-col gap-1">
+                                      <span className="text-xs text-muted-foreground uppercase tracking-wider">Classification</span>
+                                      <span className="font-medium text-white">{ticket.quality.quality_level}</span>
+                                    </div>
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex flex-col gap-1">
+                                      <span className="text-xs text-muted-foreground uppercase tracking-wider">Readiness</span>
+                                      <span className="font-medium text-white">{ticket.quality.implementation_readiness}</span>
+                                    </div>
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex flex-col gap-1">
+                                      <span className="text-xs text-muted-foreground uppercase tracking-wider">AI Agent Ready</span>
+                                      <span className="font-medium text-white flex items-center gap-2">
+                                        {ticket.quality.ai_agent_ready ? (
+                                          <><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Yes</>
+                                        ) : (
+                                          <><AlertCircle className="w-4 h-4 text-rose-400" /> No</>
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                                    <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+                                      <h4 className="font-medium text-white">Analysis Reason</h4>
+                                      <span className="text-xs font-mono bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded">
+                                        {ticket.analysis.confidence}% CONFIDENCE
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-gray-300 italic">
+                                      "{ticket.analysis.reason}"
+                                    </p>
+                                  </div>
+                                  
+                                  <div>
+                                    <h4 className="font-medium text-white border-b border-white/10 pb-2 mb-3">Scoring Breakdown</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      {Object.entries(ticket.quality.criteria_scores).map(([key, data]) => (
+                                        <div key={key} className="flex flex-col bg-black/20 p-4 rounded-lg border border-white/5">
+                                          <div className="flex justify-between items-center mb-2">
+                                            <span className="capitalize font-medium text-sm text-gray-200">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                            <span className="font-mono text-xs text-white bg-white/10 px-2 py-0.5 rounded">{data.score}/{data.maxScore}</span>
+                                          </div>
+                                          <span className="text-xs text-muted-foreground leading-relaxed">{data.reason}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  
+                                  {(ticket.quality.gaps.length > 0 || ticket.quality.recommendations.length > 0) && (
+                                    <div className="mt-2">
+                                      <h4 className="font-medium text-amber-400 border-b border-amber-500/20 pb-2 mb-3">Actionable Feedback</h4>
+                                      <div className="flex flex-col gap-3">
+                                        {ticket.quality.gaps.map((gap, i) => (
+                                          <div key={`gap-${i}`} className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-lg flex flex-col gap-2">
+                                            <div className="flex items-start gap-3">
+                                              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                                              <div>
+                                                <span className="font-medium text-amber-200 text-sm block mb-1">Identified Gap</span>
+                                                <span className="text-amber-100/70 text-sm">{gap.issue}</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                        {ticket.quality.recommendations.map((rec, i) => (
+                                          <div key={`rec-${i}`} className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg flex flex-col gap-2">
+                                            <div className="flex items-start gap-3">
+                                              <Bot className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                                              <div>
+                                                <span className="font-medium text-blue-200 text-sm block mb-1">Recommendation</span>
+                                                <span className="text-blue-100/70 text-sm">{rec}</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                !processing && (
+                                  <div className="text-center py-8 bg-white/5 rounded-xl border border-white/10 text-muted-foreground">
+                                    This ticket has not been analyzed yet.
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          );
+        })()}
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 import requests
 from requests.auth import HTTPBasicAuth
 from database import get_session
-from models import Ticket, ProjectSummary
+from models import Ticket, ProjectSummary, AppSettings
 
 router = APIRouter(prefix="/api")
 
@@ -21,20 +21,33 @@ def extract_adf_text(adf_node):
     return text.strip()
 
 @router.post("/sync")
-def sync_jira_tickets(max_results: int = 15, session: Session = Depends(get_session)):
+def sync_jira_tickets(max_results: int = 15, days_back: int = 30, session: Session = Depends(get_session)):
     """Fetch tickets from Jira API and ingest them into database"""
-    jira_url = os.getenv("JIRA_URL")
-    jira_user = os.getenv("JIRA_USERNAME")
-    jira_token = os.getenv("JIRA_API_TOKEN")
+    settings = session.exec(select(AppSettings).where(AppSettings.id == 1)).first()
+    
+    jira_url = settings.jira_url if settings else os.getenv("JIRA_URL")
+    jira_user = settings.jira_username if settings else os.getenv("JIRA_USERNAME")
+    jira_token = settings.jira_api_token if settings else os.getenv("JIRA_API_TOKEN")
 
     if not jira_url or not jira_user or not jira_token:
-        raise HTTPException(status_code=400, detail="Jira credentials missing in .env")
+        raise HTTPException(status_code=400, detail="Jira credentials missing")
 
     url = f"{jira_url.rstrip('/')}/rest/api/3/search/jql"
+    
+    selected_projects = settings.jira_selected_projects if settings else ""
+    project_filter = ""
+    if selected_projects:
+        projects_list = [p.strip() for p in selected_projects.split(",")]
+        project_str = ", ".join([f'"{p}"' for p in projects_list])
+        project_filter = f"project IN ({project_str}) AND "
+
+    sync_days = days_back
+    sync_limit = max_results
+
     payload = {
-        "jql": "project = SM AND created >= -30d order by created DESC",
-        "maxResults": max_results,
-        "fields": ["summary", "description", "status", "priority", "created", "resolutiondate"]
+        "jql": f"{project_filter}created >= -{sync_days}d order by created DESC",
+        "maxResults": sync_limit,
+        "fields": ["summary", "description", "status", "priority", "created", "resolutiondate", "customfield_10020"]
     }
     auth = HTTPBasicAuth(jira_user, jira_token)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}

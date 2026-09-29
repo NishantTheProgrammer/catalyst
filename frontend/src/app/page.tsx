@@ -22,6 +22,7 @@ export default function Home() {
   const [processing, setProcessing] = useState(false);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
   const [maxResults, setMaxResults] = useState(15);
+  const [daysBack, setDaysBack] = useState(30);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
   const [expandedTicketId, setExpandedTicketId] = useState<number | null>(null);
@@ -86,7 +87,7 @@ export default function Home() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await fetch(`http://localhost:8000/api/sync?max_results=${maxResults}`, { method: "POST" });
+      await fetch(`http://localhost:8000/api/sync?max_results=${maxResults}&days_back=${daysBack}`, { method: "POST" });
       await fetchTickets();
     } catch (err) {
       console.error("Failed to sync", err);
@@ -149,6 +150,8 @@ export default function Home() {
           <Header 
             maxResults={maxResults}
             setMaxResults={setMaxResults}
+            daysBack={daysBack}
+            setDaysBack={setDaysBack}
             syncing={syncing}
             handleSync={handleSync}
             processing={processing}
