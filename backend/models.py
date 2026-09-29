@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Column, JSON
@@ -40,3 +41,13 @@ class Ticket(SQLModel, table=True):
     is_processed: bool = Field(default=False)
     analysis: Optional[AnalysisResult] = Relationship(back_populates="ticket")
     quality: Optional["TicketQuality"] = Relationship(back_populates="ticket")
+
+class AppSettings(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    jira_url: str = Field(default_factory=lambda: os.getenv("JIRA_URL", "https://your-domain.atlassian.net"))
+    jira_username: str = Field(default_factory=lambda: os.getenv("JIRA_USERNAME", "your-email@domain.com"))
+    jira_api_token: str = Field(default_factory=lambda: os.getenv("JIRA_API_TOKEN", ""))
+    llm_provider: str = Field(default_factory=lambda: "openai" if os.getenv("OPENAI_API_KEY") else "ollama")
+    openai_api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
+    ollama_base_url: str = Field(default_factory=lambda: os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434"))
+    ollama_model: str = Field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "llama3.2:1b"))

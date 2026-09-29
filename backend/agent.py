@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, List
 import json
+import re
 from database import engine
 from models import Ticket, AnalysisResult, ProjectSummary, TicketQuality
 

@@ -5,7 +5,7 @@ from sqlmodel import SQLModel
 from database import engine
 
 import models
-from routers import tickets, ai
+from routers import tickets, ai, settings
 
 app = FastAPI(title="NASA Reviewer API")
 
@@ -31,3 +31,4 @@ def read_root():
 
 app.include_router(tickets.router)
 app.include_router(ai.router)
+app.include_router(settings.router)

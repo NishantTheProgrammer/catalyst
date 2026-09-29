@@ -5,6 +5,9 @@ import Header from "@/components/Header";
 import KPIStats from "@/components/KPIStats";
 import Charts from "@/components/Charts";
 import TicketList from "@/components/TicketList";
+import Sidebar from "@/components/Sidebar";
+import Insights from "@/components/Insights";
+import Settings from "@/components/Settings";
 import { Ticket, AnalysisResult, TicketQuality, CriteriaScore } from "@/types";
 
 const COLORS = ['#f43f5e', '#3b82f6', '#fbbf24', '#10b981', '#a855f7', '#64748b'];
@@ -19,6 +22,7 @@ export default function Home() {
   const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
   const [expandedTicketId, setExpandedTicketId] = useState<number | null>(null);
   const [summary, setSummary] = useState({ overall_status: "Unknown", summary_text: "Based on current defect trend" });
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const fetchTickets = async () => {
     try {
@@ -175,51 +179,69 @@ export default function Home() {
   }, [tickets]);
   
   return (
-    <main className="min-h-screen p-8 max-w-7xl mx-auto flex flex-col gap-8">
-      <Header 
-        maxResults={maxResults}
-        setMaxResults={setMaxResults}
-        syncing={syncing}
-        handleSync={handleSync}
-        processing={processing}
-        handleProcess={handleProcess}
-      />
+    <div className="flex min-h-screen bg-background">
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      
+      <main className="flex-1 p-8 overflow-y-auto h-screen">
+        <div className="max-w-7xl mx-auto flex flex-col gap-8">
+          <Header 
+            maxResults={maxResults}
+            setMaxResults={setMaxResults}
+            syncing={syncing}
+            handleSync={handleSync}
+            processing={processing}
+            handleProcess={handleProcess}
+          />
 
-      <KPIStats 
-        syncing={syncing}
-        processing={processing}
-        totalTickets={tickets.length}
-        processedCount={processedCount}
-        avgQuality={avgQuality}
-        qualityPercent={qualityPercent}
-      />
+          {activeTab === "dashboard" && (
+            <>
+              <KPIStats 
+                syncing={syncing}
+                processing={processing}
+                totalTickets={tickets.length}
+                processedCount={processedCount}
+                avgQuality={avgQuality}
+                qualityPercent={qualityPercent}
+              />
 
-      {/* Charts Row */}
-      {processedCount > 0 && (
-        <Charts 
-          qualityDistribution={qualityDistribution}
-          qualityMetrics={qualityMetrics}
-          categoryData={categoryData}
-          categories={categories}
-          trendData={trendData}
-          selectedQuality={selectedQuality}
-          setSelectedQuality={setSelectedQuality}
-          selectedCategory={selectedCategory}
-          setSelectedCategory={setSelectedCategory}
-          colors={COLORS}
-        />
-      )}
+              {processedCount > 0 && (
+                <Charts 
+                  qualityDistribution={qualityDistribution}
+                  qualityMetrics={qualityMetrics}
+                  categoryData={categoryData}
+                  categories={categories}
+                  trendData={trendData}
+                  selectedQuality={selectedQuality}
+                  setSelectedQuality={setSelectedQuality}
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
+                  colors={COLORS}
+                />
+              )}
+            </>
+          )}
 
-      {/* Ticket List */}
-      <TicketList 
-        tickets={tickets}
-        loading={loading}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        selectedQuality={selectedQuality}
-        setSelectedQuality={setSelectedQuality}
-        processing={processing}
-      />
-    </main>
+          {activeTab === "tickets" && (
+            <TicketList 
+              tickets={tickets}
+              loading={loading}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              selectedQuality={selectedQuality}
+              setSelectedQuality={setSelectedQuality}
+              processing={processing}
+            />
+          )}
+
+          {activeTab === "insights" && (
+            <Insights summary={summary} tickets={tickets} />
+          )}
+
+          {activeTab === "settings" && (
+            <Settings />
+          )}
+        </div>
+      </main>
+    </div>
   );
 }
