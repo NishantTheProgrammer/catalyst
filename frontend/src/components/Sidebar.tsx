@@ -1,4 +1,4 @@
-import { LayoutDashboard, Ticket, Lightbulb, Settings } from "lucide-react";
+import { LayoutDashboard, Ticket, Lightbulb, Settings, CalendarDays } from "lucide-react";
 import clsx from "clsx";
 
 type SidebarProps = {
@@ -9,6 +9,7 @@ type SidebarProps = {
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "sprints", label: "Sprints", icon: CalendarDays },
     { id: "tickets", label: "Tickets", icon: Ticket },
     { id: "insights", label: "AI Insights", icon: Lightbulb },
     { id: "settings", label: "Settings", icon: Settings },

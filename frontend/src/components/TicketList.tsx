@@ -91,6 +91,11 @@ export default function TicketList({
                         {ticket.jira_id}
                       </a>
                       <h3 className="font-medium text-lg leading-tight">{ticket.title}</h3>
+                      {ticket.sprint && (
+                        <span className="text-xs font-mono px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+                          {ticket.sprint}
+                        </span>
+                      )}
                     </div>
                     <p className="text-muted-foreground text-sm line-clamp-2 mt-1">
                       {ticket.description}

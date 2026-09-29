@@ -9,6 +9,7 @@ import Sidebar from "@/components/Sidebar";
 import Insights from "@/components/Insights";
 import Settings from "@/components/Settings";
 import Chatbot from "@/components/Chatbot";
+import SprintDashboard from "@/components/SprintDashboard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Ticket, AnalysisResult, TicketQuality, CriteriaScore } from "@/types";
 
@@ -180,6 +181,15 @@ export default function Home() {
                 />
               )}
             </>
+          )}
+
+          {activeTab === "sprints" && (
+            <SprintDashboard 
+              tickets={tickets} 
+              syncing={syncing} 
+              processing={processing} 
+              colors={COLORS} 
+            />
           )}
 
           {activeTab === "tickets" && (

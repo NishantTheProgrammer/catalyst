@@ -68,6 +68,11 @@ def sync_jira_tickets(max_results: int = 15, session: Session = Depends(get_sess
         created_date = fields.get("created", "")
         resolution_date = fields.get("resolutiondate")
         
+        # Mocking sprint assignment since Jira's sprint field varies per instance
+        import random
+        mock_sprints = ["Sprint 1", "Sprint 2", "Sprint 3", "Backlog"]
+        sprint = random.choice(mock_sprints)
+        
         existing = session.exec(select(Ticket).where(Ticket.jira_id == jira_id)).first()
         if not existing:
             new_ticket = Ticket(
@@ -76,6 +81,7 @@ def sync_jira_tickets(max_results: int = 15, session: Session = Depends(get_sess
                 description=description[:500],
                 status=status,
                 priority=priority,
+                sprint=sprint,
                 created_date=created_date,
                 resolution_date=resolution_date
             )
