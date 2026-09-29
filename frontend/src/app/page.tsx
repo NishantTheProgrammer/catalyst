@@ -17,6 +17,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [refreshingInsights, setRefreshingInsights] = useState(false);
   const [maxResults, setMaxResults] = useState(15);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
@@ -101,6 +102,18 @@ export default function Home() {
     } catch (err) {
       console.error("Failed to process", err);
       setProcessing(false);
+    }
+  };
+
+  const handleRefreshInsights = async () => {
+    setRefreshingInsights(true);
+    try {
+      await fetch("http://localhost:8000/api/summary/refresh", { method: "POST" });
+      await fetchSummary();
+    } catch (err) {
+      console.error("Failed to refresh summary", err);
+    } finally {
+      setRefreshingInsights(false);
     }
   };
 
@@ -234,7 +247,12 @@ export default function Home() {
           )}
 
           {activeTab === "insights" && (
-            <Insights summary={summary} tickets={tickets} />
+            <Insights 
+              summary={summary} 
+              tickets={tickets} 
+              processing={refreshingInsights} 
+              handleProcess={handleRefreshInsights} 
+            />
           )}
 
           {activeTab === "settings" && (

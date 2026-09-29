@@ -188,8 +188,24 @@ def update_db(state: GraphState):
     if not classifications:
         return {"tickets": []}
         
-    # Generate Project Summary
-    summary_prompt = "Based on these tickets and classifications, write a 1-paragraph project health summary focusing on defect trends and risks. Also provide an overall_status of strictly either 'Stable', 'Watch', or 'At Risk'.\n\nData:\n"
+    summary_prompt = """You are an expert Agile Project Manager and AI Analyst. Based on the following Jira tickets and their AI classifications, write a high-level, executive project health summary. 
+
+DO NOT just list the tickets. Instead, synthesize the data into insightful observations:
+1. **Current State & Trends:** Group similar issues (e.g., "Multiple deployment updates required").
+2. **Key Risks:** Identify systemic issues, data gaps, or critical bugs.
+3. **Strategic Recommendations:** Actionable next steps to improve project health.
+
+Use beautiful, professional rich markdown formatting (with **bolding** for emphasis, bullet points, and appropriate emojis). 
+
+VERY IMPORTANT: You must output strictly valid JSON. Escape all newlines in your markdown strictly as '\\n'.
+Your output MUST be a single JSON object with EXACTLY these two keys:
+{
+  "overall_status": "Stable",
+  "summary_text": "# Executive Summary\\n\\nYour markdown here..."
+}
+
+Data:
+"""
     for t, c in zip(tickets, classifications):
         summary_prompt += f"Ticket: {t.title}, AI Category: {c.get('category')}\n"
     
@@ -200,10 +216,22 @@ def update_db(state: GraphState):
         import re, json
         match = re.search(r'\{.*?\}', response.content, re.DOTALL)
         clean_json = match.group(0) if match else response.content.strip('`').replace('json\n', '').strip()
-        res_data = json.loads(clean_json)
         
-        status = res_data.get("overall_status", "Unknown")
-        text = res_data.get("summary_text", "Failed to generate summary.")
+        try:
+            res_data = json.loads(clean_json)
+            status = res_data.get("overall_status", "Watch")
+            text = res_data.get("summary_text") or res_data.get("project_health_summary", "Failed to generate summary.")
+        except json.JSONDecodeError:
+            status_match = re.search(r'"?overall_status"?\s*:\s*"?([^",\}]+)"?', response.content)
+            text_match = re.search(r'"?(summary_text|project_health_summary)"?\s*:\s*"?([\s\S]+?)"?\}?\s*$', response.content)
+            status = status_match.group(1).strip() if status_match else "Watch"
+            if text_match:
+                text = text_match.group(2).strip()
+                if text.endswith('}'): text = text[:-1].strip()
+                if text.endswith('"'): text = text[:-1].strip()
+            else:
+                text = response.content.replace('"', '').strip()
+            
     except Exception as e:
         print(f"Summary Error: {e}")
         status = "Watch"
