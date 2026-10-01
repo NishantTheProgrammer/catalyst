@@ -17,18 +17,21 @@ class GraphState(TypedDict):
     classifications: List[dict]
     qualities: List[dict]
 
-# Load AI Model based on ENV vars
-gemini_key = os.getenv("GEMINI_API_KEY")
-openai_key = os.getenv("OPENAI_API_KEY")
-if gemini_key:
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=gemini_key)
-elif openai_key:
-    llm = ChatOpenAI(model="gpt-4o-mini", api_key=openai_key)
-else:
-    # Use free, local Ollama model
-    ollama_url = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
-    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
-    llm = ChatOllama(base_url=ollama_url, model=ollama_model)
+from models import AppSettings
+from constants import DEFAULT_OLLAMA_BASE_URL, DEFAULT_OLLAMA_MODEL, DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL
+
+def get_llm():
+    with Session(engine) as session:
+        settings = session.exec(select(AppSettings).where(AppSettings.id == 1)).first()
+        if not settings:
+            return ChatOllama(base_url=DEFAULT_OLLAMA_BASE_URL, model=DEFAULT_OLLAMA_MODEL)
+        
+        if settings.llm_provider == "gemini" and settings.gemini_api_key:
+            return ChatGoogleGenerativeAI(model=settings.gemini_model or DEFAULT_GEMINI_MODEL, api_key=settings.gemini_api_key)
+        elif settings.llm_provider == "openai" and settings.openai_api_key:
+            return ChatOpenAI(model=settings.openai_model or DEFAULT_OPENAI_MODEL, api_key=settings.openai_api_key)
+        else:
+            return ChatOllama(base_url=settings.ollama_base_url or DEFAULT_OLLAMA_BASE_URL, model=settings.ollama_model or DEFAULT_OLLAMA_MODEL)
 
 def fetch_unprocessed(state: GraphState):
     with Session(engine) as session:
@@ -48,7 +51,7 @@ def analyze_tickets(state: GraphState):
             # --- 1. Classify Defect ---
             try:
                 prompt1 = CATEGORIZE_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
-                response1 = llm.invoke([HumanMessage(content=prompt1)])
+                response1 = get_llm().invoke([HumanMessage(content=prompt1)])
                 import re
                 match = re.search(r'\{.*?\}', response1.content, re.DOTALL)
                 clean_json = match.group(0) if match else response1.content.strip('`').replace('json\n', '').strip()
@@ -84,7 +87,7 @@ def analyze_tickets(state: GraphState):
             # --- 2. Assess Quality ---
             try:
                 prompt2 = QUALITY_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
-                response2 = llm.invoke([HumanMessage(content=prompt2)])
+                response2 = get_llm().invoke([HumanMessage(content=prompt2)])
                 import re
                 match2 = re.search(r'\{.*?\}', response2.content, re.DOTALL)
                 clean_json2 = match2.group(0) if match2 else response2.content.strip('`').replace('json\n', '').strip()
@@ -199,7 +202,7 @@ def generate_project_summary(tickets_data: list[tuple[str, str]]) -> tuple[str, 
     summary_prompt += SUMMARY_PROMPT_FOOTER
     
     try:
-        response = llm.invoke([HumanMessage(content=summary_prompt)])
+        response = get_llm().invoke([HumanMessage(content=summary_prompt)])
         content = response.content.strip()
         
         status = "Watch"

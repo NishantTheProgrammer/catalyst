@@ -114,7 +114,9 @@ def test_jira_connection(req: JiraTestRequest, session: Session = Depends(get_se
 class LLMTestRequest(BaseModel):
     llm_provider: str
     openai_api_key: str = ""
+    openai_model: str = ""
     gemini_api_key: str = ""
+    gemini_model: str = ""
     ollama_base_url: str = ""
     ollama_model: str = ""
 
@@ -136,7 +138,11 @@ def test_llm_connection(req: LLMTestRequest, session: Session = Depends(get_sess
                 timeout=10
             )
             if response.status_code == 200:
-                return {"status": "success", "message": "Successfully connected to OpenAI!"}
+                data = response.json()
+                model_names = [m.get("id") for m in data.get("data", [])]
+                if req.openai_model and req.openai_model not in model_names:
+                    return {"status": "success", "message": f"Connected to OpenAI, but model '{req.openai_model}' was not found in your account."}
+                return {"status": "success", "message": f"Successfully connected to OpenAI and verified model '{req.openai_model}'!" if req.openai_model else "Successfully connected to OpenAI!"}
             else:
                 raise HTTPException(status_code=400, detail=f"OpenAI error: {response.text}")
         except Exception as e:
@@ -157,7 +163,12 @@ def test_llm_connection(req: LLMTestRequest, session: Session = Depends(get_sess
                 timeout=10
             )
             if response.status_code == 200:
-                return {"status": "success", "message": "Successfully connected to Gemini API!"}
+                data = response.json()
+                # Gemini models have names like 'models/gemini-1.5-flash'
+                model_names = [m.get("name").replace("models/", "") for m in data.get("models", []) if "name" in m]
+                if req.gemini_model and req.gemini_model not in model_names and f"models/{req.gemini_model}" not in [m.get("name") for m in data.get("models", [])]:
+                    return {"status": "success", "message": f"Connected to Gemini, but model '{req.gemini_model}' was not found."}
+                return {"status": "success", "message": f"Successfully connected to Gemini and verified model '{req.gemini_model}'!" if req.gemini_model else "Successfully connected to Gemini API!"}
             else:
                 raise HTTPException(status_code=400, detail=f"Gemini error: {response.text}")
         except Exception as e:

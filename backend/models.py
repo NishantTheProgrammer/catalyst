@@ -1,6 +1,12 @@
 import os
 from typing import Optional
 from sqlmodel import SQLModel, Field, Relationship
+from constants import (
+    DEFAULT_OPENAI_MODEL,
+    DEFAULT_GEMINI_MODEL,
+    DEFAULT_OLLAMA_BASE_URL,
+    DEFAULT_OLLAMA_MODEL
+)
 from sqlalchemy import Column, JSON
 
 class AnalysisResult(SQLModel, table=True):
@@ -45,8 +51,8 @@ class Ticket(SQLModel, table=True):
 
 class AppSettings(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    jira_url: str = Field(default_factory=lambda: os.getenv("JIRA_URL", "https://your-domain.atlassian.net"))
-    jira_username: str = Field(default_factory=lambda: os.getenv("JIRA_USERNAME", "your-email@domain.com"))
+    jira_url: str = Field(default_factory=lambda: os.getenv("JIRA_URL", ""))
+    jira_username: str = Field(default_factory=lambda: os.getenv("JIRA_USERNAME", ""))
     jira_api_token: str = Field(default_factory=lambda: os.getenv("JIRA_API_TOKEN", ""))
     jira_selected_projects: str = Field(default="")
     jira_sync_limit: int = Field(default=30)
@@ -54,6 +60,8 @@ class AppSettings(SQLModel, table=True):
     is_setup_complete: bool = Field(default=False)
     llm_provider: str = Field(default_factory=lambda: "gemini" if os.getenv("GEMINI_API_KEY") else ("openai" if os.getenv("OPENAI_API_KEY") else "ollama"))
     openai_api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
+    openai_model: str = Field(default_factory=lambda: os.getenv("OPENAI_MODEL", DEFAULT_OPENAI_MODEL))
     gemini_api_key: str = Field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
-    ollama_base_url: str = Field(default_factory=lambda: os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434"))
-    ollama_model: str = Field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "llama3.2:1b"))
+    gemini_model: str = Field(default_factory=lambda: os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL))
+    ollama_base_url: str = Field(default_factory=lambda: os.getenv("OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL))
+    ollama_model: str = Field(default_factory=lambda: os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL))

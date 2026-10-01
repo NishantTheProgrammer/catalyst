@@ -8,17 +8,21 @@ from sqlmodel import Session, select
 from database import engine
 from models import Ticket
 
-# Initialize Embeddings
-gemini_key = os.getenv("GEMINI_API_KEY")
-openai_key = os.getenv("OPENAI_API_KEY")
-if gemini_key:
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=gemini_key)
-elif openai_key:
-    embeddings = OpenAIEmbeddings(api_key=openai_key)
-else:
-    # Use Ollama embeddings locally to avoid heavy PyTorch dependencies
-    ollama_url = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
-    embeddings = OllamaEmbeddings(base_url=ollama_url, model="nomic-embed-text")
+from models import AppSettings
+from constants import DEFAULT_OLLAMA_BASE_URL, DEFAULT_OLLAMA_EMBEDDING_MODEL, DEFAULT_GEMINI_EMBEDDING_MODEL
+
+def get_embeddings():
+    with Session(engine) as session:
+        settings = session.exec(select(AppSettings).where(AppSettings.id == 1)).first()
+        if not settings:
+            return OllamaEmbeddings(base_url=DEFAULT_OLLAMA_BASE_URL, model=DEFAULT_OLLAMA_EMBEDDING_MODEL)
+            
+        if settings.llm_provider == "gemini" and settings.gemini_api_key:
+            return GoogleGenerativeAIEmbeddings(model=DEFAULT_GEMINI_EMBEDDING_MODEL, google_api_key=settings.gemini_api_key)
+        elif settings.llm_provider == "openai" and settings.openai_api_key:
+            return OpenAIEmbeddings(api_key=settings.openai_api_key)
+        else:
+            return OllamaEmbeddings(base_url=settings.ollama_base_url or DEFAULT_OLLAMA_BASE_URL, model=DEFAULT_OLLAMA_EMBEDDING_MODEL)
 
 vectorstore = None
 
@@ -60,7 +64,7 @@ def build_vector_store():
         print(f"Failed to load documentation into RAG: {e}")
         
     if docs:
-        vectorstore = FAISS.from_documents(docs, embeddings)
+        vectorstore = FAISS.from_documents(docs, get_embeddings())
         print("Vector store built successfully with", len(docs), "documents")
     else:
         print("No processed tickets to build vector store.")
@@ -130,7 +134,7 @@ INSTRUCTIONS:
 2. BE EXTREMELY BRIEF AND DIRECT. Respond in 1 to 2 sentences MAX. Do not add conversational filler, summaries, or ask follow-up questions at the end.
 3. If the user's message is just a greeting (like hi, hello, hey), reply EXACTLY with: "Hello! How can I help you with your Catelyst dashboard today?" and nothing else.
 """
-    from agent import llm
+    from agent import get_llm
     from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
     
     messages = [SystemMessage(content=system_prompt)]
@@ -145,7 +149,7 @@ INSTRUCTIONS:
     messages.append(HumanMessage(content=query))
     
     try:
-        response = llm.invoke(messages)
+        response = get_llm().invoke(messages)
         return response.content
     except Exception as e:
         print(f"RAG Chat Error: {e}")

@@ -8,7 +8,9 @@ export default function Settings() {
     jiraApiToken: "",
     llmProvider: "ollama",
     openAiKey: "",
+    openaiModel: "gpt-4o-mini",
     geminiKey: "",
+    geminiModel: "gemini-2.5-flash",
     ollamaBaseUrl: "http://host.docker.internal:11434",
     ollamaModel: "llama3.2:1b",
     jiraSelectedProjects: "",
@@ -61,7 +63,9 @@ export default function Settings() {
           jiraApiToken: data.jira_api_token || "",
           llmProvider: data.llm_provider || "ollama",
           openAiKey: data.openai_api_key || "",
+          openaiModel: data.openai_model || "gpt-4o-mini",
           geminiKey: data.gemini_api_key || "",
+          geminiModel: data.gemini_model || "gemini-2.5-flash",
           ollamaBaseUrl: data.ollama_base_url || "",
           ollamaModel: data.ollama_model || "",
           jiraSelectedProjects: data.jira_selected_projects || "",
@@ -89,7 +93,9 @@ export default function Settings() {
         jira_api_token: configs.jiraApiToken,
         llm_provider: configs.llmProvider,
         openAiKey: configs.openAiKey,
+        openai_model: configs.openaiModel,
         geminiKey: configs.geminiKey,
+        gemini_model: configs.geminiModel,
         ollama_base_url: configs.ollamaBaseUrl,
         ollama_model: configs.ollamaModel,
         jira_selected_projects: configs.jiraSelectedProjects,
@@ -152,7 +158,9 @@ export default function Settings() {
         body: JSON.stringify({
           llm_provider: configs.llmProvider,
           openai_api_key: configs.openAiKey,
+          openai_model: configs.openaiModel,
           gemini_api_key: configs.geminiKey,
+          gemini_model: configs.geminiModel,
           ollama_base_url: configs.ollamaBaseUrl,
           ollama_model: configs.ollamaModel
         })
@@ -339,32 +347,58 @@ export default function Settings() {
             </div>
 
             {configs.llmProvider === "openai" && (
-              <div className="flex flex-col gap-2">
-                <label className="text-sm text-muted-foreground font-medium">OpenAI API Key</label>
-                <input 
-                  type="password" 
-                  name="openAiKey"
-                  value={configs.openAiKey}
-                  onChange={handleChange}
-                  className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
-                  placeholder="sk-..."
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm text-muted-foreground font-medium">OpenAI API Key</label>
+                  <input 
+                    type="password" 
+                    name="openAiKey"
+                    value={configs.openAiKey}
+                    onChange={handleChange}
+                    className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
+                    placeholder="sk-..."
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm text-muted-foreground font-medium">OpenAI Model</label>
+                  <input 
+                    type="text" 
+                    name="openaiModel"
+                    value={configs.openaiModel}
+                    onChange={handleChange}
+                    className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
+                    placeholder="gpt-4o-mini"
+                  />
+                </div>
               </div>
             )}
 
             {configs.llmProvider === "gemini" && (
-              <div className="flex flex-col gap-2">
-                <label className="text-sm text-muted-foreground font-medium">Gemini API Key</label>
-                <input 
-                  type="password" 
-                  name="geminiKey"
-                  value={configs.geminiKey}
-                  onChange={handleChange}
-                  className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
-                  placeholder="AIzaSy..."
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm text-muted-foreground font-medium">Gemini API Key</label>
+                  <input 
+                    type="password" 
+                    name="geminiKey"
+                    value={configs.geminiKey}
+                    onChange={handleChange}
+                    className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
+                    placeholder="AIzaSy..."
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm text-muted-foreground font-medium">Gemini Model</label>
+                  <input 
+                    type="text" 
+                    name="geminiModel"
+                    value={configs.geminiModel}
+                    onChange={handleChange}
+                    className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
+                    placeholder="gemini-2.5-flash"
+                  />
+                </div>
               </div>
             )}
 
