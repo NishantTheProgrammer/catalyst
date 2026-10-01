@@ -53,7 +53,7 @@ def analyze_tickets(state: GraphState):
                 prompt1 = CATEGORIZE_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
                 response1 = get_llm().invoke([HumanMessage(content=prompt1)])
                 import re
-                match = re.search(r'\{.*?\}', response1.content, re.DOTALL)
+                match = re.search(r'\{.*\}', response1.content, re.DOTALL)
                 clean_json = match.group(0) if match else response1.content.strip('`').replace('json\n', '').strip()
                 res_data1 = json.loads(clean_json)
                 
@@ -89,7 +89,7 @@ def analyze_tickets(state: GraphState):
                 prompt2 = QUALITY_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
                 response2 = get_llm().invoke([HumanMessage(content=prompt2)])
                 import re
-                match2 = re.search(r'\{.*?\}', response2.content, re.DOTALL)
+                match2 = re.search(r'\{.*\}', response2.content, re.DOTALL)
                 clean_json2 = match2.group(0) if match2 else response2.content.strip('`').replace('json\n', '').strip()
                 
                 clean_json2 = re.sub(r',\s*\}', '}', clean_json2)
