@@ -182,3 +182,18 @@ def test_llm_connection(req: LLMTestRequest, session: Session = Depends(get_sess
             raise HTTPException(status_code=500, detail=f"Ollama request failed. Is the server running? Error: {str(e)}")
     else:
         raise HTTPException(status_code=400, detail="Unknown LLM provider")
+
+@router.post("/reset")
+def reset_data(session: Session = Depends(get_session)):
+    from sqlmodel import delete
+    from models import Ticket, AnalysisResult, ProjectSummary, TicketQuality
+    try:
+        session.exec(delete(TicketQuality))
+        session.exec(delete(AnalysisResult))
+        session.exec(delete(Ticket))
+        session.exec(delete(ProjectSummary))
+        session.commit()
+        return {"status": "success", "message": "All project data has been wiped."}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset data: {str(e)}")

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save, Plug, CheckCircle2, AlertCircle, Search, X } from "lucide-react";
+import { Save, Plug, CheckCircle2, AlertCircle, Search, X, Trash2 } from "lucide-react";
 
 export default function Settings() {
   const [configs, setConfigs] = useState({
@@ -26,6 +26,30 @@ export default function Settings() {
   
   const [testingLlm, setTestingLlm] = useState(false);
   const [llmTestResult, setLlmTestResult] = useState<{status: 'success' | 'error' | null, message?: string}>({status: null});
+  
+  const [resetting, setResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (!confirm("Are you sure you want to delete ALL tickets and analysis data? Your configuration settings will be preserved.")) return;
+    
+    setResetting(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/settings/reset`, {
+        method: "POST"
+      });
+      if (res.ok) {
+        alert("All data wiped successfully! The page will now reload.");
+        window.location.reload();
+      } else {
+        alert("Failed to wipe data.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error while wiping data.");
+    } finally {
+      setResetting(false);
+    }
+  };
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/settings`)
@@ -430,6 +454,33 @@ export default function Settings() {
                 Configuration saved successfully!
               </span>
             )}
+          </div>
+          
+          <div className="flex items-center justify-between gap-4 mt-8 pt-6 border-t border-rose-500/20">
+            <div>
+              <h3 className="text-lg font-semibold text-rose-500">Danger Zone</h3>
+              <p className="text-sm text-muted-foreground">Clear all tickets, analysis, and dashboard data. Settings will be preserved.</p>
+            </div>
+            <button 
+              type="button" 
+              onClick={handleReset}
+              disabled={resetting}
+              className={`flex items-center gap-2 px-5 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/50 font-medium rounded-lg transition-all duration-300 text-sm ${
+                resetting ? "opacity-70 cursor-not-allowed scale-95" : "hover:-translate-y-0.5 active:translate-y-0 active:scale-95 shadow-[0_0_15px_rgba(244,63,94,0.3)] hover:shadow-[0_0_25px_rgba(244,63,94,0.5)]"
+              }`}
+            >
+              {resetting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-rose-500/30 border-t-rose-500 rounded-full animate-spin" />
+                  Wiping Data...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  Wipe All Data
+                </>
+              )}
+            </button>
           </div>
         </form>
       </div>
