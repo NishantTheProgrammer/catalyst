@@ -8,6 +8,7 @@ export default function Settings() {
     jiraApiToken: "",
     llmProvider: "ollama",
     openAiKey: "",
+    geminiKey: "",
     ollamaBaseUrl: "http://host.docker.internal:11434",
     ollamaModel: "llama3.2:1b",
     jiraSelectedProjects: "",
@@ -27,7 +28,7 @@ export default function Settings() {
   const [llmTestResult, setLlmTestResult] = useState<{status: 'success' | 'error' | null, message?: string}>({status: null});
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/settings")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/settings`)
       .then(res => res.json())
       .then(data => {
         setConfigs({
@@ -36,6 +37,7 @@ export default function Settings() {
           jiraApiToken: data.jira_api_token || "",
           llmProvider: data.llm_provider || "ollama",
           openAiKey: data.openai_api_key || "",
+          geminiKey: data.gemini_api_key || "",
           ollamaBaseUrl: data.ollama_base_url || "",
           ollamaModel: data.ollama_model || "",
           jiraSelectedProjects: data.jira_selected_projects || "",
@@ -62,7 +64,8 @@ export default function Settings() {
         jira_username: configs.jiraUsername,
         jira_api_token: configs.jiraApiToken,
         llm_provider: configs.llmProvider,
-        openAiKey: configs.openAiKey, // backend looks for openAiKey specifically
+        openAiKey: configs.openAiKey,
+        geminiKey: configs.geminiKey,
         ollama_base_url: configs.ollamaBaseUrl,
         ollama_model: configs.ollamaModel,
         jira_selected_projects: configs.jiraSelectedProjects,
@@ -70,7 +73,7 @@ export default function Settings() {
         jira_sync_limit: Number(configs.jiraSyncLimit)
       };
       
-      const res = await fetch("http://localhost:8000/api/settings", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/settings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -92,7 +95,7 @@ export default function Settings() {
     setTesting(true);
     setTestResult({ status: null });
     try {
-      const res = await fetch("http://localhost:8000/api/settings/jira/test", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/settings/jira/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -119,12 +122,13 @@ export default function Settings() {
     setTestingLlm(true);
     setLlmTestResult({ status: null });
     try {
-      const res = await fetch("http://localhost:8000/api/settings/llm/test", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/settings/llm/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           llm_provider: configs.llmProvider,
           openai_api_key: configs.openAiKey,
+          gemini_api_key: configs.geminiKey,
           ollama_base_url: configs.ollamaBaseUrl,
           ollama_model: configs.ollamaModel
         })
@@ -306,6 +310,7 @@ export default function Settings() {
               >
                 <option value="ollama" className="bg-slate-900 text-white">Ollama</option>
                 <option value="openai" className="bg-slate-900 text-white">OpenAI</option>
+                <option value="gemini" className="bg-slate-900 text-white">Gemini</option>
               </select>
             </div>
 
@@ -319,6 +324,21 @@ export default function Settings() {
                   onChange={handleChange}
                   className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
                   placeholder="sk-..."
+                  required
+                />
+              </div>
+            )}
+
+            {configs.llmProvider === "gemini" && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm text-muted-foreground font-medium">Gemini API Key</label>
+                <input 
+                  type="password" 
+                  name="geminiKey"
+                  value={configs.geminiKey}
+                  onChange={handleChange}
+                  className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
+                  placeholder="AIzaSy..."
                   required
                 />
               </div>

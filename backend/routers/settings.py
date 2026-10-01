@@ -20,6 +20,8 @@ def get_settings(session: Session = Depends(get_session)):
         data["jira_api_token"] = "********"
     if data.get("openai_api_key"):
         data["openai_api_key"] = "********"
+    if data.get("gemini_api_key"):
+        data["gemini_api_key"] = "********"
         
     return data
 
@@ -48,6 +50,11 @@ def update_settings(updates: dict, session: Session = Depends(get_session)):
     # Handle the fact that frontend currently sends 'openAiKey' instead of 'openai_api_key'
     elif updates.get("openai_api_key") and updates["openai_api_key"] != "********":
         settings.openai_api_key = updates["openai_api_key"]
+        
+    if updates.get("geminiKey") and updates["geminiKey"] != "********":
+        settings.gemini_api_key = updates["geminiKey"]
+    elif updates.get("gemini_api_key") and updates["gemini_api_key"] != "********":
+        settings.gemini_api_key = updates["gemini_api_key"]
 
     settings.is_setup_complete = True
 
@@ -107,6 +114,7 @@ def test_jira_connection(req: JiraTestRequest, session: Session = Depends(get_se
 class LLMTestRequest(BaseModel):
     llm_provider: str
     openai_api_key: str = ""
+    gemini_api_key: str = ""
     ollama_base_url: str = ""
     ollama_model: str = ""
 
@@ -133,6 +141,27 @@ def test_llm_connection(req: LLMTestRequest, session: Session = Depends(get_sess
                 raise HTTPException(status_code=400, detail=f"OpenAI error: {response.text}")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"OpenAI request failed: {str(e)}")
+            
+    elif req.llm_provider == "gemini":
+        token = req.gemini_api_key
+        if token == "********":
+            settings = session.exec(select(AppSettings).where(AppSettings.id == 1)).first()
+            if settings and settings.gemini_api_key:
+                token = settings.gemini_api_key
+            else:
+                raise HTTPException(status_code=400, detail="Gemini API key not found. Please re-enter it.")
+        
+        try:
+            response = requests.get(
+                f"https://generativelanguage.googleapis.com/v1beta/models?key={token}",
+                timeout=10
+            )
+            if response.status_code == 200:
+                return {"status": "success", "message": "Successfully connected to Gemini API!"}
+            else:
+                raise HTTPException(status_code=400, detail=f"Gemini error: {response.text}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Gemini request failed: {str(e)}")
             
     elif req.llm_provider == "ollama":
         if not req.ollama_base_url:

@@ -2,6 +2,7 @@ import os
 from sqlmodel import Session, select
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, List
@@ -17,8 +18,11 @@ class GraphState(TypedDict):
     qualities: List[dict]
 
 # Load AI Model based on ENV vars
+gemini_key = os.getenv("GEMINI_API_KEY")
 openai_key = os.getenv("OPENAI_API_KEY")
-if openai_key:
+if gemini_key:
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=gemini_key)
+elif openai_key:
     llm = ChatOpenAI(model="gpt-4o-mini", api_key=openai_key)
 else:
     # Use free, local Ollama model

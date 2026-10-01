@@ -33,7 +33,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const fetchTickets = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/tickets");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/tickets`);
       if (res.ok) {
         const data = await res.json();
         setTickets(data);
@@ -47,7 +47,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const fetchSummary = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/summary");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/summary`);
       if (res.ok) {
         const data = await res.json();
         setSummary(data);
@@ -87,7 +87,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await fetch(`http://localhost:8000/api/sync?max_results=${maxResults}&days_back=${daysBack}`, { method: "POST" });
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sync?max_results=${maxResults}&days_back=${daysBack}`, { method: "POST" });
       await fetchTickets();
     } catch (err) {
       console.error("Failed to sync", err);
@@ -102,7 +102,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     
     setProcessing(true);
     try {
-      await fetch("http://localhost:8000/api/process", { method: "POST" });
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/process`, { method: "POST" });
     } catch (err) {
       console.error("Failed to process", err);
       setProcessing(false);
@@ -112,7 +112,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const handleRefreshInsights = async () => {
     setRefreshingInsights(true);
     try {
-      await fetch("http://localhost:8000/api/summary/refresh", { method: "POST" });
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/summary/refresh`, { method: "POST" });
       await fetchSummary();
     } catch (err) {
       console.error("Failed to refresh summary", err);

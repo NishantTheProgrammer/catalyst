@@ -10,7 +10,7 @@ export default function Home() {
   useEffect(() => {
     const checkSetup = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/settings");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/settings`);
         if (res.ok) {
           const data = await res.json();
           if (data.is_setup_complete === false) {

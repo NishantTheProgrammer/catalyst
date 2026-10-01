@@ -3,13 +3,17 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from sqlmodel import Session, select
 from database import engine
 from models import Ticket
 
 # Initialize Embeddings
+gemini_key = os.getenv("GEMINI_API_KEY")
 openai_key = os.getenv("OPENAI_API_KEY")
-if openai_key:
+if gemini_key:
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=gemini_key)
+elif openai_key:
     embeddings = OpenAIEmbeddings(api_key=openai_key)
 else:
     # Use Ollama embeddings locally to avoid heavy PyTorch dependencies
