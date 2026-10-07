@@ -42,7 +42,12 @@ class Ticket(SQLModel, table=True):
     description: str
     status: str
     priority: str = Field(default="Medium")
+    issue_type: str = Field(default="Story")
     sprint: str | None = Field(default="Unassigned")
+    sprint_id: int | None = Field(default=None)
+    sprint_state: str | None = Field(default=None)
+    sprint_start: str | None = Field(default=None)
+    sprint_end: str | None = Field(default=None)
     created_date: str = Field(default="")
     resolution_date: str | None = Field(default=None)
     is_processed: bool = Field(default=False)
