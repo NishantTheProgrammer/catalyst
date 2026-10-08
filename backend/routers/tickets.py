@@ -21,7 +21,7 @@ def extract_adf_text(adf_node):
     return text.strip()
 
 @router.post("/sync")
-def sync_jira_tickets(max_results: int = 15, days_back: int = 30, session: Session = Depends(get_session)):
+def sync_jira_tickets(max_results: int | None = None, days_back: int | None = None, session: Session = Depends(get_session)):
     """Fetch tickets from Jira API and ingest them into database"""
     settings = session.exec(select(AppSettings).where(AppSettings.id == 1)).first()
     
@@ -41,11 +41,28 @@ def sync_jira_tickets(max_results: int = 15, days_back: int = 30, session: Sessi
         project_str = ", ".join([f'"{p}"' for p in projects_list])
         project_filter = f"project IN ({project_str}) AND "
 
-    sync_days = days_back
-    sync_limit = max_results
+    sync_limit = max_results if max_results is not None else (settings.jira_sync_limit if settings else 30)
+    sync_days = days_back if days_back is not None else (settings.jira_sync_days if settings else 30)
+    sync_mode = settings.sync_mode if settings and hasattr(settings, 'sync_mode') else "date_range"
+    sprints_to_load = settings.sprints_to_load if settings and hasattr(settings, 'sprints_to_load') else 3
+    per_sprint_limit = settings.per_sprint_limit if settings and hasattr(settings, 'per_sprint_limit') else 50
+
+    # per_sprint_limit overrides sync_limit when a sprint-aware mode is selected
+    if sync_mode in ("active_only", "last_n_sprints"):
+        sync_limit = per_sprint_limit
+
+    if sync_mode == "active_only":
+        jql = f"{project_filter}issuetype in (Epic, Story, Bug) AND sprint in openSprints() ORDER BY created DESC"
+    elif sync_mode == "last_n_sprints":
+        # Each sprint is ~2 weeks. Use sprints_to_load * 14 days as the time window.
+        sprint_days = sprints_to_load * 14
+        jql = f"{project_filter}issuetype in (Epic, Story, Bug) AND (sprint in openSprints() OR sprint in closedSprints()) AND created >= -{sprint_days}d ORDER BY created DESC"
+    else:
+        # date_range mode — use days_back as-is (original behaviour)
+        jql = f"{project_filter}issuetype in (Epic, Story, Bug) AND created >= -{sync_days}d ORDER BY created DESC"
 
     payload = {
-        "jql": f"{project_filter}issuetype in (Epic, Story, Bug) AND created >= -{sync_days}d order by created DESC",
+        "jql": jql,
         "maxResults": sync_limit,
         "fields": ["summary", "description", "status", "priority", "issuetype", "created", "resolutiondate", "customfield_10020"]
     }

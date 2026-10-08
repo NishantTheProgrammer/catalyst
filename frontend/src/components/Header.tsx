@@ -1,10 +1,6 @@
 import { Activity, RefreshCw, Bot } from "lucide-react";
 
 type HeaderProps = {
-  maxResults: number;
-  setMaxResults: (val: number) => void;
-  daysBack: number;
-  setDaysBack: (val: number) => void;
   syncing: boolean;
   handleSync: () => void;
   processing: boolean;
@@ -12,10 +8,6 @@ type HeaderProps = {
 };
 
 export default function Header({
-  maxResults,
-  setMaxResults,
-  daysBack,
-  setDaysBack,
   syncing,
   handleSync,
   processing,
@@ -36,27 +28,6 @@ export default function Header({
       </div>
       
       <div className="flex gap-4 items-center">
-        <div className="flex items-center gap-2 bg-secondary/30 px-3 py-2 rounded-lg border border-border">
-          <label className="text-sm text-muted-foreground whitespace-nowrap">Days Back:</label>
-          <input 
-            type="number" 
-            value={daysBack}
-            onChange={(e) => setDaysBack(parseInt(e.target.value) || 30)}
-            className="w-12 bg-transparent border-b border-white/20 text-white outline-none text-center appearance-none"
-            min="1"
-            max="365"
-          />
-          <div className="w-px h-4 bg-white/20 mx-1"></div>
-          <label className="text-sm text-muted-foreground whitespace-nowrap">Load Limit:</label>
-          <input 
-            type="number" 
-            value={maxResults}
-            onChange={(e) => setMaxResults(parseInt(e.target.value) || 15)}
-            className="w-12 bg-transparent border-b border-white/20 text-white outline-none text-center appearance-none"
-            min="1"
-            max="200"
-          />
-        </div>
         <button 
           onClick={handleSync}
           disabled={syncing}

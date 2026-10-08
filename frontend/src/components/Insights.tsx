@@ -14,8 +14,6 @@ type InsightsProps = {
 
 export default function Insights({ summary, tickets, processing, handleProcess }: InsightsProps) {
   const processedTickets = tickets.filter(t => t.is_processed && t.analysis);
-  const codeDefects = processedTickets.filter(t => t.analysis?.category === "Code").length;
-  const reqGaps = processedTickets.filter(t => t.analysis?.category === "Requirement").length;
   
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
@@ -86,8 +84,8 @@ export default function Insights({ summary, tickets, processing, handleProcess }
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Code Defects</div>
-              <div className="font-semibold text-lg">{codeDefects}</div>
+              <div className="text-sm text-muted-foreground">Total Bugs</div>
+              <div className="font-semibold text-lg">{tickets.filter(t => t.issue_type === 'Bug').length}</div>
             </div>
           </div>
 
@@ -96,8 +94,8 @@ export default function Insights({ summary, tickets, processing, handleProcess }
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Requirement Gaps</div>
-              <div className="font-semibold text-lg">{reqGaps}</div>
+              <div className="text-sm text-muted-foreground">Total Stories</div>
+              <div className="font-semibold text-lg">{tickets.filter(t => t.issue_type === 'Story').length}</div>
             </div>
           </div>
         </div>
