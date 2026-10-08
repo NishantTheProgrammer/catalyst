@@ -45,9 +45,9 @@ def sync_jira_tickets(max_results: int = 15, days_back: int = 30, session: Sessi
     sync_limit = max_results
 
     payload = {
-        "jql": f"{project_filter}created >= -{sync_days}d order by created DESC",
+        "jql": f"{project_filter}issuetype in (Epic, Story, Bug) AND created >= -{sync_days}d order by created DESC",
         "maxResults": sync_limit,
-        "fields": ["summary", "description", "status", "priority", "created", "resolutiondate", "customfield_10020"]
+        "fields": ["summary", "description", "status", "priority", "issuetype", "created", "resolutiondate", "customfield_10020"]
     }
     auth = HTTPBasicAuth(jira_user, jira_token)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
@@ -78,13 +78,29 @@ def sync_jira_tickets(max_results: int = 15, days_back: int = 30, session: Sessi
             
         status = fields.get("status", {}).get("name", "Unknown")
         priority = fields.get("priority", {}).get("name", "Medium") if fields.get("priority") else "Medium"
+        raw_type = fields.get("issuetype", {}).get("name", "Story")
+        issue_type = raw_type if raw_type in ("Epic", "Story", "Bug") else "Story"
         created_date = fields.get("created", "")
         resolution_date = fields.get("resolutiondate")
         
-        # Mocking sprint assignment since Jira's sprint field varies per instance
-        import random
-        mock_sprints = ["Sprint 1", "Sprint 2", "Sprint 3", "Backlog"]
-        sprint = random.choice(mock_sprints)
+        sprint_field = fields.get("customfield_10020") or []
+        sprint_name = "Backlog"
+        sprint_id = None
+        sprint_state = None
+        sprint_start = None
+        sprint_end = None
+        if sprint_field and isinstance(sprint_field, list):
+            raw = sprint_field[-1]
+            if isinstance(raw, dict):
+                sprint_name = raw.get("name", "Backlog")
+                sprint_id = raw.get("id")
+                sprint_state = raw.get("state")
+                sprint_start = raw.get("startDate")
+                sprint_end = raw.get("endDate")
+            elif isinstance(raw, str):
+                import re as _re
+                m = _re.search(r'name=([^,\]]+)', raw)
+                sprint_name = m.group(1).strip() if m else "Backlog"
         
         existing = session.exec(select(Ticket).where(Ticket.jira_id == jira_id)).first()
         if not existing:
@@ -94,7 +110,12 @@ def sync_jira_tickets(max_results: int = 15, days_back: int = 30, session: Sessi
                 description=description[:500],
                 status=status,
                 priority=priority,
-                sprint=sprint,
+                issue_type=issue_type,
+                sprint=sprint_name,
+                sprint_id=sprint_id,
+                sprint_state=sprint_state,
+                sprint_start=sprint_start,
+                sprint_end=sprint_end,
                 created_date=created_date,
                 resolution_date=resolution_date
             )

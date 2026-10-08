@@ -23,7 +23,13 @@ export type Ticket = {
   title: string;
   description: string;
   status: string;
+  priority: string;
+  issue_type: string;
   sprint: string | null;
+  sprint_id: number | null;
+  sprint_state: string | null;
+  sprint_start: string | null;
+  sprint_end: string | null;
   created_date: string;
   link: string;
   is_processed: boolean;

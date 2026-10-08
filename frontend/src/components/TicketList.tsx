@@ -84,6 +84,7 @@ export default function TicketList({
                 <tr className="border-b border-white/10 text-sm text-muted-foreground bg-white/[0.01]">
                   <th className="py-4 px-6 font-medium whitespace-nowrap">Ticket</th>
                   <th className="py-4 px-6 font-medium whitespace-nowrap">Project</th>
+                  <th className="py-4 px-6 font-medium whitespace-nowrap">Type</th>
                   <th className="py-4 px-6 font-medium">Title</th>
                   <th className="py-4 px-6 font-medium whitespace-nowrap">Sprint</th>
                   <th className="py-4 px-6 font-medium whitespace-nowrap">Category</th>
@@ -111,6 +112,15 @@ export default function TicketList({
                         </td>
                         <td className="py-4 px-6">
                           <span className="text-sm font-medium text-gray-300">{project}</span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`text-xs font-medium px-2 py-1 rounded whitespace-nowrap ${
+                            ticket.issue_type === 'Epic' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                            ticket.issue_type === 'Bug'  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                                                           'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                          }`}>
+                            {ticket.issue_type || 'Story'}
+                          </span>
                         </td>
                         <td className="py-4 px-6">
                           <span className="text-sm line-clamp-2" title={ticket.title}>{ticket.title}</span>
@@ -163,7 +173,7 @@ export default function TicketList({
                       {/* Expanded Row Content */}
                       {isExpanded && (
                         <tr className="bg-black/30 border-b border-white/5 shadow-inner">
-                          <td colSpan={7} className="p-0">
+                          <td colSpan={8} className="p-0">
                             <div className="p-6 md:p-8 animate-fade-in flex flex-col gap-6">
                               {/* Description Section */}
                               <div className="bg-white/5 rounded-xl p-5 border border-white/10">
