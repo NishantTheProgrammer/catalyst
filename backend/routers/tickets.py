@@ -64,17 +64,22 @@ def sync_jira_tickets(max_results: int | None = None, days_back: int | None = No
     payload = {
         "jql": jql,
         "maxResults": sync_limit,
-        "fields": ["summary", "description", "status", "priority", "issuetype", "created", "resolutiondate", "customfield_10020"]
+        "fields": ["summary", "description", "status", "priority", "issuetype", "created", "resolutiondate", "customfield_10020", "duedate", "comment", "issuelinks", "parent"],
+        "expand": "changelog"
     }
     auth = HTTPBasicAuth(jira_user, jira_token)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
     
     try:
         response = requests.post(url, headers=headers, json=payload, auth=auth, timeout=10)
-        if response.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"Failed to fetch from Jira: {response.text}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Request failed: {str(e)}")
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Network error reaching Jira: {str(e)}")
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Jira API returned {response.status_code}. JQL: [{jql}] | Response: {response.text[:800]}"
+        )
         
     data = response.json()
     issues = data.get("issues", [])
@@ -99,6 +104,72 @@ def sync_jira_tickets(max_results: int | None = None, days_back: int | None = No
         issue_type = raw_type if raw_type in ("Epic", "Story", "Bug") else "Story"
         created_date = fields.get("created", "")
         resolution_date = fields.get("resolutiondate")
+
+        # Due date
+        due_date = fields.get("duedate")
+
+        # Parent story key (for bugs linked to stories)
+        parent_story_key = None
+        parent_field = fields.get("parent")
+        if parent_field:
+            parent_story_key = parent_field.get("key")
+        # Also check issuelinks for "is subtask of" or "relates to" story type
+        if not parent_story_key:
+            for link in fields.get("issuelinks", []) or []:
+                inward = link.get("inwardIssue", {})
+                outward = link.get("outwardIssue", {})
+                linked = inward if inward else outward
+                if linked and linked.get("fields", {}).get("issuetype", {}).get("name") == "Story":
+                    parent_story_key = linked.get("key")
+                    break
+
+        # Comments
+        comment_data = fields.get("comment", {}) or {}
+        comments_list = comment_data.get("comments", [])
+        comment_count = len(comments_list)
+        # Combine last 5 comments into a single text blob for AI context
+        comments_text = " | ".join([
+            c.get("body", "") if isinstance(c.get("body"), str)
+            else extract_adf_text(c.get("body", {}))
+            for c in comments_list[-5:]
+        ])
+
+        # Status history and bounce count from changelog
+        status_history = []
+        bounce_count = 0
+        changelog = issue.get("changelog", {})
+        for history in changelog.get("histories", []):
+            changed_at = history.get("created", "")
+            for item in history.get("items", []):
+                if item.get("field") == "status":
+                    from_status = item.get("fromString", "")
+                    to_status = item.get("toString", "")
+                    status_history.append({
+                        "from": from_status,
+                        "to": to_status,
+                        "at": changed_at
+                    })
+                    # Count bounces: any backward transition (QA/Testing → Dev/In Progress)
+                    qa_stages = ["qa", "testing", "in qa", "in review", "review"]
+                    dev_stages = ["in progress", "development", "in development", "dev"]
+                    if (any(s in to_status.lower() for s in dev_stages) and
+                        any(s in from_status.lower() for s in qa_stages)):
+                        bounce_count += 1
+
+        # Timeline deviation in days
+        timeline_deviation_days = None
+        if due_date:
+            try:
+                from datetime import datetime, timezone
+                due_dt = datetime.fromisoformat(due_date.replace("Z", "+00:00"))
+                if resolution_date:
+                    res_dt = datetime.fromisoformat(resolution_date.replace("Z", "+00:00"))
+                    timeline_deviation_days = (res_dt - due_dt).days
+                else:
+                    now_dt = datetime.now(timezone.utc)
+                    timeline_deviation_days = (now_dt - due_dt).days
+            except Exception:
+                pass
         
         sprint_field = fields.get("customfield_10020") or []
         sprint_name = "Backlog"
@@ -134,7 +205,14 @@ def sync_jira_tickets(max_results: int | None = None, days_back: int | None = No
                 sprint_start=sprint_start,
                 sprint_end=sprint_end,
                 created_date=created_date,
-                resolution_date=resolution_date
+                resolution_date=resolution_date,
+                due_date=due_date,
+                parent_story_key=parent_story_key,
+                comment_count=comment_count,
+                comments_text=comments_text[:1000],
+                status_history=status_history,
+                bounce_count=bounce_count,
+                timeline_deviation_days=timeline_deviation_days,
             )
             session.add(new_ticket)
             count += 1

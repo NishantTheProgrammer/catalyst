@@ -1,8 +1,24 @@
-CATEGORIZE_PROMPT_TEMPLATE = """Classify this Jira ticket into one of these categories strictly: Code, Data, Configuration, Documentation, Requirement, Legacy. Title: {title}. Description: {description}. Reply in strictly JSON format: {{"category": "...", "confidence": <integer 1-100>, "reason": "..."}}"""
+CATEGORIZE_PROMPT_TEMPLATE = """Classify this Jira ticket into one of these categories strictly: Code, Data, Configuration, Documentation, Requirement, Legacy.
 
-QUALITY_PROMPT_TEMPLATE = """Evaluate this Jira ticket. Title: {title}. Description: {description}
+Title: {title}
+Description: {description}
+Issue Type: {issue_type}
+Comments ({comment_count} total, last 5): {comments}
+
+Reply in strictly JSON format: {{"category": "...", "confidence": <integer 1-100>, "reason": "..."}}"""
+
+QUALITY_PROMPT_TEMPLATE = """Evaluate this Jira ticket.
+
+Title: {title}
+Description: {description}
+Issue Type: {issue_type}
+Due Date: {due_date}
+Timeline Deviation: {timeline_deviation_days} days (positive = late, negative = early, null = no due date)
+Dev↔QA Bounces: {bounce_count} (how many times this ticket was sent back from QA to Dev)
+Comments ({comment_count} total, last 5): {comments}
 
 Evaluate 5 criteria: Clarity (out of 20), Completeness (out of 20), Context (out of 20), Reproducibility (out of 20), Dependencies (out of 20).
+Factor in: if bounce_count > 2 reduce Completeness and Context scores. If timeline_deviation_days > 7 note it in recommendation.
 Keep reasoning brief. You MUST reply ONLY with valid JSON, flat structure.
 
 Format:
@@ -31,8 +47,13 @@ SUMMARY_PROMPT_FOOTER = """
 Remember: Start exactly with "STATUS: " followed by the status, then "---", then your detailed markdown."""
 
 BUG_ANALYSIS_PROMPT_TEMPLATE = """Analyze this Jira Bug ticket.
+
 Title: {title}
 Description: {description}
+Due Date: {due_date}
+Timeline Deviation: {timeline_deviation_days} days (positive = late)
+Dev↔QA Bounces: {bounce_count}
+Comments ({comment_count} total, last 5): {comments}
 
 Reply ONLY with valid JSON, no extra text, no markdown:
 {{"severity": "P1-High", "root_cause_type": "Regression", "is_reproducible": true, "impact_summary": "one sentence here"}}
@@ -40,6 +61,7 @@ Reply ONLY with valid JSON, no extra text, no markdown:
 Rules:
 - severity must be exactly one of: "P0-Critical", "P1-High", "P2-Medium", "P3-Low"
   P0 = system down or data loss, P1 = major feature broken, P2 = partial impact with workaround, P3 = minor or cosmetic
+  If bounce_count > 2 or timeline_deviation_days > 14, raise severity by one level.
 - root_cause_type must be exactly one of: "Regression", "New Feature", "Environment", "Data", "Unknown"
-- is_reproducible: true if steps to reproduce are present or can be inferred, false otherwise
+- is_reproducible: true if steps to reproduce are present in description or comments, false otherwise
 - impact_summary: one sentence about user or business impact"""

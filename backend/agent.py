@@ -58,7 +58,13 @@ def analyze_tickets(state: GraphState):
 
             # --- 1. Classify Defect ---
             try:
-                prompt1 = CATEGORIZE_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
+                prompt1 = CATEGORIZE_PROMPT_TEMPLATE.format(
+                    title=ticket.title,
+                    description=ticket.description,
+                    issue_type=ticket.issue_type or "Story",
+                    comments=ticket.comments_text or "No comments.",
+                    comment_count=ticket.comment_count or 0
+                )
                 response1 = get_llm().invoke([HumanMessage(content=prompt1)])
                 import re
                 content1 = response1.content if isinstance(response1.content, str) else ''.join(p.get('text', '') if isinstance(p, dict) else str(p) for p in response1.content)
@@ -95,7 +101,16 @@ def analyze_tickets(state: GraphState):
             # --- 2. Assess Quality ---
             # --- 2. Assess Quality ---
             try:
-                prompt2 = QUALITY_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
+                prompt2 = QUALITY_PROMPT_TEMPLATE.format(
+                    title=ticket.title,
+                    description=ticket.description,
+                    issue_type=ticket.issue_type or "Story",
+                    due_date=ticket.due_date or "Not set",
+                    timeline_deviation_days=ticket.timeline_deviation_days if ticket.timeline_deviation_days is not None else "null",
+                    bounce_count=ticket.bounce_count or 0,
+                    comments=ticket.comments_text or "No comments.",
+                    comment_count=ticket.comment_count or 0
+                )
                 response2 = get_llm().invoke([HumanMessage(content=prompt2)])
                 import re
                 content2 = response2.content if isinstance(response2.content, str) else ''.join(p.get('text', '') if isinstance(p, dict) else str(p) for p in response2.content)
@@ -184,7 +199,13 @@ def analyze_tickets(state: GraphState):
             if ticket.issue_type == "Bug":
                 try:
                     prompt_bug = BUG_ANALYSIS_PROMPT_TEMPLATE.format(
-                        title=ticket.title, description=ticket.description
+                        title=ticket.title,
+                        description=ticket.description,
+                        due_date=ticket.due_date or "Not set",
+                        timeline_deviation_days=ticket.timeline_deviation_days if ticket.timeline_deviation_days is not None else "null",
+                        bounce_count=ticket.bounce_count or 0,
+                        comments=ticket.comments_text or "No comments.",
+                        comment_count=ticket.comment_count or 0
                     )
                     response_bug = get_llm().invoke([HumanMessage(content=prompt_bug)])
                     content_bug = response_bug.content if isinstance(response_bug.content, str) else ''.join(p.get('text', '') if isinstance(p, dict) else str(p) for p in response_bug.content)
