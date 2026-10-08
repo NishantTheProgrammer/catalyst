@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Ticket } from "@/types";
-import { CalendarDays, TrendingUp, BarChart2, Activity } from "lucide-react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { CalendarDays, TrendingUp, BarChart2, Activity, ShieldAlert, Target, TrendingDown } from "lucide-react";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { useSprintStats } from '@/hooks/useDashboardStats';
 
 type SprintDashboardProps = {
   tickets: Ticket[];
@@ -53,6 +54,7 @@ export default function SprintDashboard({ tickets, colors }: SprintDashboardProp
   }, [tickets]);
 
   const { formattedData, categoryList } = sprintData;
+  const { sprintSeverityData, bugCriticalityData, sprintHealthScores, crossSprintRadarData, radarSprintNames } = useSprintStats(tickets);
 
   if (formattedData.length === 0) {
     return (
@@ -142,6 +144,111 @@ export default function SprintDashboard({ tickets, colors }: SprintDashboardProp
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </div>
+
+      {/* Sprint Health Score Cards */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3 bg-card/50 p-4 rounded-2xl border border-border backdrop-blur-xl">
+          <div className="p-2 bg-primary/10 rounded-xl">
+            <TrendingUp className="w-5 h-5 text-primary" />
+          </div>
+          <h3 className="text-lg font-semibold">Sprint Health Scores</h3>
+          <p className="text-sm text-muted-foreground">Higher is better — composite of quality, bug ratio, and resolution rate</p>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {sprintHealthScores.map(item => (
+            <div key={item.sprint} className="glass-panel p-5 rounded-2xl min-w-[155px] flex flex-col gap-1 shrink-0">
+              <span className="text-xs text-muted-foreground truncate">{item.sprint}</span>
+              <span className={`text-3xl font-bold ${
+                item.healthScore >= 75 ? 'text-emerald-400' :
+                item.healthScore >= 50 ? 'text-amber-400' : 'text-rose-400'
+              }`}>{item.healthScore}</span>
+              <span className="text-xs text-muted-foreground">/ 100</span>
+              {item.delta !== null && (
+                <span className={`text-xs font-medium flex items-center gap-0.5 mt-1 ${
+                  item.delta > 0 ? 'text-emerald-400' :
+                  item.delta < 0 ? 'text-rose-400' : 'text-muted-foreground'
+                }`}>
+                  {item.delta > 0 ? '↑' : item.delta < 0 ? '↓' : '→'}
+                  {item.delta > 0 ? '+' : ''}{item.delta} vs prev
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Severity & Bug charts side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-orange-400" /> Ticket Severity per Sprint
+          </h3>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sprintSeverityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="sprint" stroke="rgba(255,255,255,0.4)" fontSize={11} tickMargin={10} />
+                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} allowDecimals={false} />
+                <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                <Legend />
+                <Bar dataKey="Critical" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="High" fill="#f97316" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Medium" fill="#eab308" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Low" fill="#22c55e" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <TrendingDown className="w-5 h-5 text-rose-400" /> Bug vs Story per Sprint
+          </h3>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={bugCriticalityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="sprint" stroke="rgba(255,255,255,0.4)" fontSize={11} tickMargin={10} />
+                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} allowDecimals={false} />
+                <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                <Legend />
+                <Bar dataKey="stories" name="Stories" stackId="a" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="totalBugs" name="Total Bugs" stackId="a" fill="#f43f5e" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="criticalBugs" name="P0/P1 Bugs" fill="#ff0000" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Cross-Sprint Radar */}
+      <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+        <h3 className="text-xl font-semibold flex items-center gap-2">
+          <Target className="w-5 h-5 text-blue-400" /> Cross-Sprint Performance Radar
+        </h3>
+        <p className="text-sm text-muted-foreground -mt-2">Last 4 sprints compared across 5 health metrics (all values out of 100)</p>
+        <div className="h-[380px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={crossSprintRadarData}>
+              <PolarGrid stroke="rgba(255,255,255,0.15)" />
+              <PolarAngleAxis dataKey="metric" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} />
+              {radarSprintNames.map((sprintName, index) => (
+                <Radar
+                  key={sprintName}
+                  name={sprintName}
+                  dataKey={sprintName}
+                  stroke={colors[index % colors.length]}
+                  fill={colors[index % colors.length]}
+                  fillOpacity={0.15}
+                />
+              ))}
+              <Legend />
+              <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+            </RadarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

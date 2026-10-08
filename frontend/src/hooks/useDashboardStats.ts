@@ -84,6 +84,15 @@ export function useDashboardStats(tickets: Ticket[]) {
       { metric: "Dependencies", score: Math.round(dependencies / count) }
     ];
 
+    const epicCount = tickets.filter(t => t.issue_type === 'Epic').length;
+    const storyCount = tickets.filter(t => t.issue_type === 'Story').length;
+    const bugCount = tickets.filter(t => t.issue_type === 'Bug').length;
+    const criticalBugCount = tickets.filter(t =>
+      t.issue_type === 'Bug' &&
+      t.bug_analysis != null &&
+      (t.bug_analysis.severity === 'P0-Critical' || t.bug_analysis.severity === 'P1-High')
+    ).length;
+
     return {
       processedCount,
       categoryData,
@@ -92,7 +101,114 @@ export function useDashboardStats(tickets: Ticket[]) {
       avgQuality,
       qualityPercent,
       qualityDistribution,
-      qualityMetrics
+      qualityMetrics,
+      epicCount,
+      storyCount,
+      bugCount,
+      criticalBugCount
     };
+  }, [tickets]);
+}
+
+export function useSprintStats(tickets: Ticket[]) {
+  return useMemo(() => {
+    const bySprint: Record<string, {
+      sprint: string; total: number; processedCount: number;
+      Critical: number; High: number; Medium: number; Low: number;
+      totalBugs: number; criticalBugs: number; resolvedBugs: number; stories: number;
+      qualitySum: number; qualityCount: number; aiReadyCount: number;
+    }> = {};
+
+    tickets.forEach(t => {
+      const s = t.sprint || 'Backlog';
+      if (!bySprint[s]) {
+        bySprint[s] = { sprint: s, total: 0, processedCount: 0,
+          Critical: 0, High: 0, Medium: 0, Low: 0,
+          totalBugs: 0, criticalBugs: 0, resolvedBugs: 0, stories: 0,
+          qualitySum: 0, qualityCount: 0, aiReadyCount: 0 };
+      }
+      const d = bySprint[s];
+      d.total += 1;
+      if (t.is_processed) d.processedCount += 1;
+
+      const p = (t.priority || 'Medium').toLowerCase();
+      if (p === 'critical' || p === 'highest') d.Critical += 1;
+      else if (p === 'high') d.High += 1;
+      else if (p === 'low' || p === 'lowest') d.Low += 1;
+      else d.Medium += 1;
+
+      if (t.issue_type === 'Bug') {
+        d.totalBugs += 1;
+        const isDone = ['Done', 'Resolved', 'Closed'].includes(t.status);
+        if (isDone) d.resolvedBugs += 1;
+        if (t.bug_analysis &&
+          (t.bug_analysis.severity === 'P0-Critical' || t.bug_analysis.severity === 'P1-High')) {
+          d.criticalBugs += 1;
+        }
+      }
+      if (t.issue_type === 'Story') d.stories += 1;
+
+      if (t.quality) {
+        d.qualitySum += t.quality.quality_score;
+        d.qualityCount += 1;
+        if (t.quality.ai_agent_ready) d.aiReadyCount += 1;
+      }
+    });
+
+    const sorted = Object.values(bySprint).sort((a, b) => a.sprint.localeCompare(b.sprint));
+
+    const sprintSeverityData = sorted.map(d => ({
+      sprint: d.sprint, Critical: d.Critical, High: d.High,
+      Medium: d.Medium, Low: d.Low
+    }));
+
+    const bugCriticalityData = sorted.map(d => ({
+      sprint: d.sprint,
+      totalBugs: d.totalBugs,
+      criticalBugs: d.criticalBugs,
+      resolvedBugs: d.resolvedBugs,
+      stories: d.stories,
+      bugRatio: d.total > 0 ? Math.round((d.totalBugs / d.total) * 100) / 100 : 0
+    }));
+
+    const healthList = sorted.map(d => {
+      const avgQ = d.qualityCount > 0 ? d.qualitySum / d.qualityCount : 50;
+      const bugRatio = d.total > 0 ? d.totalBugs / d.total : 0;
+      const resolvedRate = d.totalBugs > 0 ? d.resolvedBugs / d.totalBugs : 1;
+      return {
+        sprint: d.sprint,
+        healthScore: Math.round(avgQ * 0.4 + (1 - bugRatio) * 100 * 0.3 + resolvedRate * 100 * 0.3)
+      };
+    });
+
+    const sprintHealthScores = healthList.map((item, i) => ({
+      ...item,
+      prevHealthScore: i > 0 ? healthList[i - 1].healthScore : null,
+      delta: i > 0 ? item.healthScore - healthList[i - 1].healthScore : null
+    }));
+
+    const last4 = sorted.slice(-4);
+    const radarSprintNames = last4.map(d => d.sprint);
+    const metrics = ['Avg Quality', 'Bug-Free Rate', 'Critical Rate', 'AI-Ready Rate', 'Completion %'];
+
+    const crossSprintRadarData = metrics.map(metric => {
+      const row: Record<string, string | number> = { metric };
+      last4.forEach(d => {
+        const avgQ = d.qualityCount > 0 ? d.qualitySum / d.qualityCount : 0;
+        const bugRatio = d.total > 0 ? d.totalBugs / d.total : 0;
+        const critRate = d.total > 0 ? (d.Critical / d.total) * 100 : 0;
+        const aiRate = d.processedCount > 0 ? (d.aiReadyCount / d.processedCount) * 100 : 0;
+        const compRate = d.total > 0 ? (d.processedCount / d.total) * 100 : 0;
+        if (metric === 'Avg Quality')    row[d.sprint] = Math.round(avgQ);
+        if (metric === 'Bug-Free Rate')  row[d.sprint] = Math.round((1 - bugRatio) * 100);
+        if (metric === 'Critical Rate')  row[d.sprint] = Math.round(critRate);
+        if (metric === 'AI-Ready Rate')  row[d.sprint] = Math.round(aiRate);
+        if (metric === 'Completion %')   row[d.sprint] = Math.round(compRate);
+      });
+      return row;
+    });
+
+    return { sprintSeverityData, bugCriticalityData, sprintHealthScores,
+             crossSprintRadarData, radarSprintNames };
   }, [tickets]);
 }

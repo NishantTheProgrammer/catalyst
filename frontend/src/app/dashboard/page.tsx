@@ -21,7 +21,11 @@ export default function DashboardPage() {
     avgQuality,
     qualityPercent,
     qualityDistribution,
-    qualityMetrics
+    qualityMetrics,
+    epicCount,
+    storyCount,
+    bugCount,
+    criticalBugCount
   } = useDashboardStats(tickets);
 
   return (
@@ -33,6 +37,10 @@ export default function DashboardPage() {
         processedCount={processedCount}
         avgQuality={avgQuality}
         qualityPercent={qualityPercent}
+        epicCount={epicCount}
+        storyCount={storyCount}
+        bugCount={bugCount}
+        criticalBugCount={criticalBugCount}
       />
 
       {processedCount > 0 && (
