@@ -53,6 +53,16 @@ class Ticket(SQLModel, table=True):
     is_processed: bool = Field(default=False)
     analysis: Optional[AnalysisResult] = Relationship(back_populates="ticket")
     quality: Optional["TicketQuality"] = Relationship(back_populates="ticket")
+    bug_analysis: Optional["BugAnalysis"] = Relationship(back_populates="ticket")
+
+class BugAnalysis(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    ticket_id: int = Field(foreign_key="ticket.id")
+    severity: str = Field(default="P2-Medium")
+    root_cause_type: str = Field(default="Unknown")
+    is_reproducible: bool = Field(default=False)
+    impact_summary: str = Field(default="")
+    ticket: Optional["Ticket"] = Relationship(back_populates="bug_analysis")
 
 class AppSettings(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)

@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel
 from database import engine
+from schema_sync import sync_missing_columns
 
 import models
 from routers import tickets, ai, settings
@@ -21,7 +22,8 @@ app.add_middleware(
 def on_startup():
     try:
         SQLModel.metadata.create_all(engine)
-        print("Database tables created successfully.")
+        sync_missing_columns(engine)
+        print("Database schema is up to date.")
     except Exception as e:
         print(f"Error connecting to database during startup: {e}")
 

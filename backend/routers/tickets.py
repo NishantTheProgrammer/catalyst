@@ -141,6 +141,7 @@ def get_tickets(session: Session = Depends(get_session)):
         data = t.model_dump()
         data["analysis"] = t.analysis.model_dump() if t.analysis else None
         data["quality"] = t.quality.model_dump() if t.quality else None
+        data["bug_analysis"] = t.bug_analysis.model_dump() if t.bug_analysis else None
         data["link"] = f"{jira_base}/browse/{t.jira_id}"
         response.append(data)
     return response

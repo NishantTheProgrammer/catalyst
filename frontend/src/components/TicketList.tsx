@@ -265,6 +265,37 @@ export default function TicketList({
                                       </div>
                                     </div>
                                   )}
+                                  {ticket.bug_analysis && (
+                                    <div className="bg-rose-500/5 rounded-xl p-5 border border-rose-500/20">
+                                      <h4 className="font-medium text-rose-400 border-b border-rose-500/20 pb-2 mb-4 flex items-center gap-2">
+                                        <Bug className="w-4 h-4" /> Bug Analysis
+                                      </h4>
+                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div className="bg-black/20 p-3 rounded-lg border border-white/5 flex flex-col gap-1">
+                                          <span className="text-xs text-muted-foreground uppercase tracking-wider">Severity</span>
+                                          <span className={`text-sm font-semibold ${
+                                            ticket.bug_analysis.severity.startsWith('P0') ? 'text-red-400' :
+                                            ticket.bug_analysis.severity.startsWith('P1') ? 'text-orange-400' :
+                                            ticket.bug_analysis.severity.startsWith('P2') ? 'text-yellow-400' : 'text-green-400'
+                                          }`}>{ticket.bug_analysis.severity}</span>
+                                        </div>
+                                        <div className="bg-black/20 p-3 rounded-lg border border-white/5 flex flex-col gap-1">
+                                          <span className="text-xs text-muted-foreground uppercase tracking-wider">Root Cause</span>
+                                          <span className="text-sm font-medium text-white">{ticket.bug_analysis.root_cause_type}</span>
+                                        </div>
+                                        <div className="bg-black/20 p-3 rounded-lg border border-white/5 flex flex-col gap-1">
+                                          <span className="text-xs text-muted-foreground uppercase tracking-wider">Reproducible</span>
+                                          <span className={`text-sm font-semibold ${ticket.bug_analysis.is_reproducible ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            {ticket.bug_analysis.is_reproducible ? 'Yes' : 'No'}
+                                          </span>
+                                        </div>
+                                        <div className="bg-black/20 p-3 rounded-lg border border-white/5 flex flex-col gap-1 col-span-2 md:col-span-1">
+                                          <span className="text-xs text-muted-foreground uppercase tracking-wider">Impact</span>
+                                          <span className="text-xs text-gray-300 leading-relaxed">{ticket.bug_analysis.impact_summary}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 !processing && (

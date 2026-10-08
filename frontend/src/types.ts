@@ -17,6 +17,14 @@ export type TicketQuality = {
   ai_agent_ready: boolean;
 };
 
+export type BugAnalysis = {
+  id: number;
+  severity: string;
+  root_cause_type: string;
+  is_reproducible: boolean;
+  impact_summary: string;
+};
+
 export type Ticket = {
   id: number;
   jira_id: string;
@@ -35,4 +43,5 @@ export type Ticket = {
   is_processed: boolean;
   analysis: AnalysisResult | null;
   quality: TicketQuality | null;
+  bug_analysis: BugAnalysis | null;
 };
