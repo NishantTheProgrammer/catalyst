@@ -15,7 +15,10 @@ export default function Settings() {
     ollamaModel: "llama3.2:1b",
     jiraSelectedProjects: "",
     jiraSyncDays: 30,
-    jiraSyncLimit: 30
+    jiraSyncLimit: 30,
+    perSprintLimit: 50,
+    sprintsToLoad: 3,
+    syncMode: "last_n_sprints"
   });
 
   const [saving, setSaving] = useState(false);
@@ -70,7 +73,10 @@ export default function Settings() {
           ollamaModel: data.ollama_model || "",
           jiraSelectedProjects: data.jira_selected_projects || "",
           jiraSyncDays: data.jira_sync_days || 30,
-          jiraSyncLimit: data.jira_sync_limit || 30
+          jiraSyncLimit: data.jira_sync_limit || 30,
+          perSprintLimit: data.per_sprint_limit || 50,
+          sprintsToLoad: data.sprints_to_load || 3,
+          syncMode: data.sync_mode || "last_n_sprints"
         });
       })
       .catch(err => console.error("Failed to load settings", err));
@@ -100,7 +106,10 @@ export default function Settings() {
         ollama_model: configs.ollamaModel,
         jira_selected_projects: configs.jiraSelectedProjects,
         jira_sync_days: Number(configs.jiraSyncDays),
-        jira_sync_limit: Number(configs.jiraSyncLimit)
+        jira_sync_limit: Number(configs.jiraSyncLimit),
+        per_sprint_limit: Number(configs.perSprintLimit),
+        sprints_to_load: Number(configs.sprintsToLoad),
+        sync_mode: configs.syncMode
       };
       
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/settings`, {
@@ -325,6 +334,53 @@ export default function Settings() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          <hr className="border-border" />
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Sync Settings</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm text-muted-foreground font-medium">Sync Mode</label>
+                <select
+                  name="syncMode"
+                  value={configs.syncMode}
+                  onChange={handleChange}
+                  className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="last_n_sprints" className="bg-slate-900 text-white">Last N Sprints</option>
+                  <option value="active_only" className="bg-slate-900 text-white">Active Sprint Only</option>
+                  <option value="date_range" className="bg-slate-900 text-white">Date Range (Days Back)</option>
+                </select>
+              </div>
+
+              {configs.syncMode === "last_n_sprints" && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm text-muted-foreground font-medium">Sprints to Load</label>
+                  <input
+                    type="number"
+                    name="sprintsToLoad"
+                    value={configs.sprintsToLoad}
+                    onChange={handleChange}
+                    min="1" max="20"
+                    className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm text-muted-foreground font-medium">Max Tickets per Sprint</label>
+                <input
+                  type="number"
+                  name="perSprintLimit"
+                  value={configs.perSprintLimit}
+                  onChange={handleChange}
+                  min="10" max="500" step="10"
+                  className="bg-secondary/30 border border-border p-3 rounded-lg text-white outline-none focus:border-primary transition-colors"
+                />
+              </div>
             </div>
           </div>
 

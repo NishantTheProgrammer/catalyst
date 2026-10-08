@@ -41,6 +41,9 @@ def update_settings(updates: dict, session: Session = Depends(get_session)):
     if "jira_selected_projects" in updates: settings.jira_selected_projects = updates["jira_selected_projects"]
     if "jira_sync_limit" in updates: settings.jira_sync_limit = updates["jira_sync_limit"]
     if "jira_sync_days" in updates: settings.jira_sync_days = updates["jira_sync_days"]
+    if "per_sprint_limit" in updates: settings.per_sprint_limit = int(updates["per_sprint_limit"])
+    if "sprints_to_load" in updates: settings.sprints_to_load = int(updates["sprints_to_load"])
+    if "sync_mode" in updates: settings.sync_mode = updates["sync_mode"]
     
     if updates.get("jira_api_token") and updates["jira_api_token"] != "********":
         settings.jira_api_token = updates["jira_api_token"]

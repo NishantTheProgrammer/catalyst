@@ -9,10 +9,6 @@ interface DashboardContextType {
   syncing: boolean;
   processing: boolean;
   refreshingInsights: boolean;
-  maxResults: number;
-  setMaxResults: (val: number) => void;
-  daysBack: number;
-  setDaysBack: (val: number) => void;
   summary: { overall_status: string; summary_text: string };
   handleSync: () => Promise<void>;
   handleProcess: () => Promise<void>;
@@ -27,8 +23,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [syncing, setSyncing] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
-  const [maxResults, setMaxResults] = useState(15);
-  const [daysBack, setDaysBack] = useState(30);
   const [summary, setSummary] = useState({ overall_status: "Unknown", summary_text: "Based on current defect trend" });
 
   const fetchTickets = async () => {
@@ -87,7 +81,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sync?max_results=${maxResults}&days_back=${daysBack}`, { method: "POST" });
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/sync`, { method: "POST" });
       await fetchTickets();
     } catch (err) {
       console.error("Failed to sync", err);
@@ -123,8 +117,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   return (
     <DashboardContext.Provider value={{
-      tickets, loading, syncing, processing, refreshingInsights,
-      maxResults, setMaxResults, daysBack, setDaysBack, summary,
+      tickets, loading, syncing, processing, refreshingInsights, summary,
       handleSync, handleProcess, handleRefreshInsights
     }}>
       {children}

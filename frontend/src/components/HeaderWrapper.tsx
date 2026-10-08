@@ -6,10 +6,6 @@ import { useDashboard } from "@/context/DashboardContext";
 
 export default function HeaderWrapper() {
   const {
-    maxResults,
-    setMaxResults,
-    daysBack,
-    setDaysBack,
     syncing,
     handleSync,
     processing,
@@ -18,10 +14,6 @@ export default function HeaderWrapper() {
 
   return (
     <Header
-      maxResults={maxResults}
-      setMaxResults={setMaxResults}
-      daysBack={daysBack}
-      setDaysBack={setDaysBack}
       syncing={syncing}
       handleSync={handleSync}
       processing={processing}
