@@ -9,8 +9,8 @@ from typing import TypedDict, List
 import json
 import re
 from database import engine
-from models import Ticket, AnalysisResult, ProjectSummary, TicketQuality
-from prompts import CATEGORIZE_PROMPT_TEMPLATE, QUALITY_PROMPT_TEMPLATE, SUMMARY_PROMPT_HEADER, SUMMARY_PROMPT_FOOTER
+from models import Ticket, AnalysisResult, ProjectSummary, TicketQuality, BugAnalysis
+from prompts import CATEGORIZE_PROMPT_TEMPLATE, QUALITY_PROMPT_TEMPLATE, SUMMARY_PROMPT_HEADER, SUMMARY_PROMPT_FOOTER, BUG_ANALYSIS_PROMPT_TEMPLATE
 
 class GraphState(TypedDict):
     tickets: List[Ticket]
@@ -48,13 +48,22 @@ def analyze_tickets(state: GraphState):
     
     with Session(engine) as session:
         for ticket in tickets:
+            if ticket.issue_type == "Epic":
+                db_ticket = session.get(Ticket, ticket.id)
+                if db_ticket:
+                    db_ticket.is_processed = True
+                    session.add(db_ticket)
+                session.commit()
+                continue
+
             # --- 1. Classify Defect ---
             try:
                 prompt1 = CATEGORIZE_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
                 response1 = get_llm().invoke([HumanMessage(content=prompt1)])
                 import re
-                match = re.search(r'\{.*\}', response1.content, re.DOTALL)
-                clean_json = match.group(0) if match else response1.content.strip('`').replace('json\n', '').strip()
+                content1 = response1.content if isinstance(response1.content, str) else ''.join(p.get('text', '') if isinstance(p, dict) else str(p) for p in response1.content)
+                match = re.search(r'\{.*\}', content1, re.DOTALL)
+                clean_json = match.group(0) if match else content1.strip('`').replace('json\n', '').strip()
                 res_data1 = json.loads(clean_json)
                 
                 category = res_data1.get("category", "Unknown")
@@ -89,8 +98,9 @@ def analyze_tickets(state: GraphState):
                 prompt2 = QUALITY_PROMPT_TEMPLATE.format(title=ticket.title, description=ticket.description)
                 response2 = get_llm().invoke([HumanMessage(content=prompt2)])
                 import re
-                match2 = re.search(r'\{.*\}', response2.content, re.DOTALL)
-                clean_json2 = match2.group(0) if match2 else response2.content.strip('`').replace('json\n', '').strip()
+                content2 = response2.content if isinstance(response2.content, str) else ''.join(p.get('text', '') if isinstance(p, dict) else str(p) for p in response2.content)
+                match2 = re.search(r'\{.*\}', content2, re.DOTALL)
+                clean_json2 = match2.group(0) if match2 else content2.strip('`').replace('json\n', '').strip()
                 
                 clean_json2 = re.sub(r',\s*\}', '}', clean_json2)
                 try:
@@ -170,6 +180,40 @@ def analyze_tickets(state: GraphState):
                 ai_agent_ready=res_data2.get("aiAgentReady", False)
             )
             session.add(qual)
+
+            if ticket.issue_type == "Bug":
+                try:
+                    prompt_bug = BUG_ANALYSIS_PROMPT_TEMPLATE.format(
+                        title=ticket.title, description=ticket.description
+                    )
+                    response_bug = get_llm().invoke([HumanMessage(content=prompt_bug)])
+                    content_bug = response_bug.content if isinstance(response_bug.content, str) else ''.join(p.get('text', '') if isinstance(p, dict) else str(p) for p in response_bug.content)
+                    match_bug = re.search(r'\{.*\}', content_bug, re.DOTALL)
+                    clean_bug = match_bug.group(0) if match_bug else content_bug.strip('`').replace('json\n', '').strip()
+                    bug_data = json.loads(clean_bug)
+                    valid_severities = ["P0-Critical", "P1-High", "P2-Medium", "P3-Low"]
+                    valid_causes = ["Regression", "New Feature", "Environment", "Data", "Unknown"]
+                    if bug_data.get("severity") not in valid_severities:
+                        bug_data["severity"] = "P2-Medium"
+                    if bug_data.get("root_cause_type") not in valid_causes:
+                        bug_data["root_cause_type"] = "Unknown"
+                except Exception as e:
+                    print(f"Bug Analysis Error: {e}")
+                    bug_data = {
+                        "severity": "P2-Medium",
+                        "root_cause_type": "Unknown",
+                        "is_reproducible": False,
+                        "impact_summary": "Could not determine impact automatically."
+                    }
+                bug_result = BugAnalysis(
+                    ticket_id=ticket.id,
+                    severity=bug_data.get("severity", "P2-Medium"),
+                    root_cause_type=bug_data.get("root_cause_type", "Unknown"),
+                    is_reproducible=bool(bug_data.get("is_reproducible", False)),
+                    impact_summary=str(bug_data.get("impact_summary", ""))
+                )
+                session.add(bug_result)
+
             qualities.append(res_data2)
             
             # --- 3. Mark processed & Commit IMMEDIATELY to UI ---
@@ -203,7 +247,8 @@ def generate_project_summary(tickets_data: list[tuple[str, str]]) -> tuple[str, 
     
     try:
         response = get_llm().invoke([HumanMessage(content=summary_prompt)])
-        content = response.content.strip()
+        content = response.content if isinstance(response.content, str) else ''.join(p.get('text', '') if isinstance(p, dict) else str(p) for p in response.content)
+        content = content.strip()
         
         status = "Watch"
         text = content

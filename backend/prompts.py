@@ -29,3 +29,17 @@ Data:
 
 SUMMARY_PROMPT_FOOTER = """
 Remember: Start exactly with "STATUS: " followed by the status, then "---", then your detailed markdown."""
+
+BUG_ANALYSIS_PROMPT_TEMPLATE = """Analyze this Jira Bug ticket.
+Title: {title}
+Description: {description}
+
+Reply ONLY with valid JSON, no extra text, no markdown:
+{{"severity": "P1-High", "root_cause_type": "Regression", "is_reproducible": true, "impact_summary": "one sentence here"}}
+
+Rules:
+- severity must be exactly one of: "P0-Critical", "P1-High", "P2-Medium", "P3-Low"
+  P0 = system down or data loss, P1 = major feature broken, P2 = partial impact with workaround, P3 = minor or cosmetic
+- root_cause_type must be exactly one of: "Regression", "New Feature", "Environment", "Data", "Unknown"
+- is_reproducible: true if steps to reproduce are present or can be inferred, false otherwise
+- impact_summary: one sentence about user or business impact"""
