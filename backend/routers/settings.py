@@ -44,6 +44,8 @@ def update_settings(updates: dict, session: Session = Depends(get_session)):
     if "per_sprint_limit" in updates: settings.per_sprint_limit = int(updates["per_sprint_limit"])
     if "sprints_to_load" in updates: settings.sprints_to_load = int(updates["sprints_to_load"])
     if "sync_mode" in updates: settings.sync_mode = updates["sync_mode"]
+    if "gemini_model" in updates: settings.gemini_model = updates["gemini_model"]
+    if "openai_model" in updates: settings.openai_model = updates["openai_model"]
     
     if updates.get("jira_api_token") and updates["jira_api_token"] != "********":
         settings.jira_api_token = updates["jira_api_token"]
