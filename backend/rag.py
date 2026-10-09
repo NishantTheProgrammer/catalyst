@@ -82,6 +82,14 @@ def get_global_metrics(session: Session) -> str:
     
     categories = {}
     quality_scores = []
+    sprint_scores = {}
+    
+    # Advanced metrics
+    low_quality_count = 0
+    high_bounce_count = 0
+    delayed_tickets_count = 0
+    severe_bugs_count = 0
+    root_causes = {}
     
     for t in tickets:
         if t.is_processed and t.analysis:
@@ -89,15 +97,50 @@ def get_global_metrics(session: Session) -> str:
             categories[cat] = categories.get(cat, 0) + 1
         if t.is_processed and t.quality:
             quality_scores.append(t.quality.quality_score)
+            sprint_name = t.sprint or "Backlog"
+            if sprint_name not in sprint_scores:
+                sprint_scores[sprint_name] = []
+            sprint_scores[sprint_name].append(t.quality.quality_score)
+            
+            if t.quality.quality_score < 60:
+                low_quality_count += 1
+                
+        if t.bounce_count > 2:
+            high_bounce_count += 1
+        if t.timeline_deviation_days and t.timeline_deviation_days > 0:
+            delayed_tickets_count += 1
+            
+        if t.is_processed and t.bug_analysis:
+            rc = t.bug_analysis.root_cause_type
+            root_causes[rc] = root_causes.get(rc, 0) + 1
+            if "P0" in t.bug_analysis.severity or "P1" in t.bug_analysis.severity:
+                severe_bugs_count += 1
             
     avg_quality = round(sum(quality_scores) / len(quality_scores)) if quality_scores else 0
     cat_str = ", ".join([f"{k}: {v}" for k, v in categories.items()]) if categories else "None"
+    rc_str = ", ".join([f"{k}: {v}" for k, v in root_causes.items()]) if root_causes else "None"
+    
+    sprint_trend_str = "None"
+    if sprint_scores:
+        trend_parts = []
+        for sprint, scores in sorted(sprint_scores.items()):
+            sprint_avg = round(sum(scores) / len(scores))
+            trend_parts.append(f"{sprint}: {sprint_avg}/100")
+        sprint_trend_str = ", ".join(trend_parts)
     
     return f"""GLOBAL DASHBOARD METRICS:
 - Total Tickets in System: {total}
 - AI Processed Tickets: {processed}
 - Average Ticket Quality Score: {avg_quality}/100
+- Sprint Quality Trend: {sprint_trend_str}
 - Defect Categories: {cat_str}
+
+PROJECT RISKS & DEEP INSIGHTS:
+- Tickets Flagged as Low Quality (<60 Score): {low_quality_count}
+- Tickets Bouncing Frequently (>2 times): {high_bounce_count}
+- Tickets with Timeline Delays: {delayed_tickets_count}
+- Critical/Blocker Bugs (P0/P1): {severe_bugs_count}
+- Bug Root Causes Summary: {rc_str}
 """
 
 def stream_rag(query: str, history: list = None):
