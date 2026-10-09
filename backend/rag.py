@@ -173,7 +173,12 @@ INSTRUCTIONS:
     try:
         for chunk in get_llm().stream(messages):
             if chunk.content:
-                yield chunk.content
+                if isinstance(chunk.content, list):
+                    text = "".join(item.get("text", "") if isinstance(item, dict) else str(item) for item in chunk.content)
+                    if text:
+                        yield text
+                else:
+                    yield str(chunk.content)
     except Exception as e:
         print(f"RAG Chat Error: {e}")
         yield "Sorry, I encountered an error while trying to answer your question."
