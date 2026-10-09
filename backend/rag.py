@@ -100,12 +100,19 @@ def get_global_metrics(session: Session) -> str:
 - Defect Categories: {cat_str}
 """
 
-def query_rag(query: str, history: list = None) -> str:
+def stream_rag(query: str, history: list = None):
     global vectorstore
     if not vectorstore:
         build_vector_store()
         
     if not vectorstore:
+        # Check if it failed because of API error or empty DB
+        with Session(engine) as session:
+            from crud import get_tickets_eager
+            if get_tickets_eager(session, processed_only=True):
+                yield "Failed to connect to the Gemini Embeddings API (likely a 429 Rate Limit from processing tickets). Please wait 60 seconds and try again."
+                return
+            
         yield "No ticket data available to search. Please process some tickets first."
         return
         

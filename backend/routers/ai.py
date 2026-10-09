@@ -55,5 +55,5 @@ from fastapi.responses import StreamingResponse
 @router.post("/chat")
 def chat(request: ChatRequest):
     """Query the RAG pipeline for insights on the current tickets using streaming"""
-    from rag import query_rag
-    return StreamingResponse(query_rag(request.query, request.history), media_type="text/plain")
+    from rag import stream_rag
+    return StreamingResponse(stream_rag(request.query, request.history), media_type="text/plain")
