@@ -65,8 +65,12 @@ def build_vector_store():
         print(f"Failed to load documentation into RAG: {e}")
         
     if docs:
-        vectorstore = FAISS.from_documents(docs, get_embeddings())
-        print("Vector store built successfully with", len(docs), "documents")
+        try:
+            vectorstore = FAISS.from_documents(docs, get_embeddings())
+            print("Vector store built successfully with", len(docs), "documents")
+        except Exception as e:
+            print(f"FAISS embedding error: {e}")
+            vectorstore = None
     else:
         print("No processed tickets to build vector store.")
 
