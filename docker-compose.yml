@@ -1,21 +1,4 @@
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: nasa_reviewer_db
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: nasadb
-    volumes:
-      - ./data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d nasadb"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   backend:
     build: ./backend
     container_name: nasa_reviewer_backend
@@ -23,14 +6,12 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./data:/data
       - ./README.md:/docs/README.md
       - ./USER_GUIDE.md:/docs/USER_GUIDE.md
     env_file: ./backend/.env
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/nasadb
-    depends_on:
-      db:
-        condition: service_healthy
+      - DATABASE_URL=sqlite:////data/nasa.db
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
