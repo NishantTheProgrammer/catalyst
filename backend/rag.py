@@ -102,7 +102,8 @@ def query_rag(query: str, history: list = None) -> str:
         build_vector_store()
         
     if not vectorstore:
-        return "No ticket data available to search. Please process some tickets first."
+        yield "No ticket data available to search. Please process some tickets first."
+        return
         
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
     relevant_docs = retriever.invoke(query)

@@ -57,12 +57,16 @@ export default function Chatbot() {
       
       const botMsgId = (Date.now() + 1).toString();
       setMessages(prev => [...prev, { id: botMsgId, text: "", isBot: true }]);
-      setLoading(false); // Stop the dots once connection is established
 
       let done = false;
+      let firstChunk = true;
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
+        if (firstChunk) {
+            setLoading(false); // Stop the dots once connection is established and first byte arrives
+            firstChunk = false;
+        }
         if (value) {
           const chunk = decoder.decode(value, { stream: true });
           setMessages(prev => prev.map(m => 
@@ -70,6 +74,7 @@ export default function Chatbot() {
           ));
         }
       }
+      setLoading(false); // Ensure loading is off when stream is complete
     } catch (err) {
       console.error(err);
       const errorMsg: Message = { id: (Date.now() + 1).toString(), text: "An error occurred while reaching the AI server.", isBot: true };
