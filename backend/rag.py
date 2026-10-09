@@ -104,14 +104,15 @@ def query_rag(query: str, history: list = None) -> str:
     if not vectorstore:
         return "No ticket data available to search. Please process some tickets first."
         
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
     relevant_docs = retriever.invoke(query)
     
     context_chunks = []
     for d in relevant_docs:
         doc_type = d.metadata.get("type", "ticket")
-        prefix = "--- DOCUMENTATION ---" if doc_type == "documentation" else "--- TICKET ---"
-        context_chunks.append(f"{prefix}\n{d.page_content}")
+        prefix = "<documentation>" if doc_type == "documentation" else "<ticket>"
+        suffix = "</documentation>" if doc_type == "documentation" else "</ticket>"
+        context_chunks.append(f"{prefix}\n{d.page_content}\n{suffix}")
         
     context = "\n\n".join(context_chunks)
     
@@ -120,21 +121,24 @@ def query_rag(query: str, history: list = None) -> str:
         
     system_prompt = f"""You are "Catelyst AI", a helpful AI assistant embedded in a Jira project dashboard.
 
-GLOBAL DASHBOARD METRICS:
+<dashboard_metrics>
 {global_metrics}
+</dashboard_metrics>
 
-DASHBOARD INSTRUCTIONS:
+<dashboard_instructions>
 - To process/analyze tickets: Click the "Run AI Analysis" button (top right).
 - To fetch/load tickets: Click the "Sync Jira" button.
 - To refresh insights: Click the refresh icon on the Insights panel.
+</dashboard_instructions>
 
-CONTEXT DATA (Jira Tickets and Documentation):
+<context>
 {context}
+</context>
 
 INSTRUCTIONS:
-1. Answer the user's question using ONLY the provided metrics and context.
-2. BE EXTREMELY BRIEF AND DIRECT. Respond in 1 to 2 sentences MAX. Do not add conversational filler, summaries, or ask follow-up questions at the end.
-3. If the user's message is just a greeting (like hi, hello, hey), reply EXACTLY with: "Hello! How can I help you with your Catelyst dashboard today?" and nothing else.
+1. Answer the user's question using ONLY the data provided in <context> and <dashboard_metrics>.
+2. Be extremely brief, direct, and concise. Do not add conversational filler or summaries.
+3. If the user greets you, reply EXACTLY with: "Hello! How can I help you with your Catelyst dashboard today?"
 """
     from agent import get_llm
     from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -142,7 +146,7 @@ INSTRUCTIONS:
     messages = [SystemMessage(content=system_prompt)]
     
     if history:
-        for msg in history:
+        for msg in history[-4:]:
             if msg.role == "assistant":
                 messages.append(AIMessage(content=msg.content))
             else:
@@ -151,8 +155,9 @@ INSTRUCTIONS:
     messages.append(HumanMessage(content=query))
     
     try:
-        response = get_llm().invoke(messages)
-        return response.content
+        for chunk in get_llm().stream(messages):
+            if chunk.content:
+                yield chunk.content
     except Exception as e:
         print(f"RAG Chat Error: {e}")
-        return "Sorry, I encountered an error while trying to answer your question."
+        yield "Sorry, I encountered an error while trying to answer your question."

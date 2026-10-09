@@ -49,14 +49,31 @@ export default function Chatbot() {
         body: JSON.stringify({ query: userMsg.text, history })
       });
       
-      const data = await res.json();
-      const botMsg: Message = { id: (Date.now() + 1).toString(), text: data.answer || "Sorry, I couldn't process that.", isBot: true };
-      setMessages(prev => [...prev, botMsg]);
+      if (!res.ok) throw new Error("Server error");
+      if (!res.body) throw new Error("No response body");
+      
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      
+      const botMsgId = (Date.now() + 1).toString();
+      setMessages(prev => [...prev, { id: botMsgId, text: "", isBot: true }]);
+      setLoading(false); // Stop the dots once connection is established
+
+      let done = false;
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          setMessages(prev => prev.map(m => 
+            m.id === botMsgId ? { ...m, text: m.text + chunk } : m
+          ));
+        }
+      }
     } catch (err) {
       console.error(err);
       const errorMsg: Message = { id: (Date.now() + 1).toString(), text: "An error occurred while reaching the AI server.", isBot: true };
       setMessages(prev => [...prev, errorMsg]);
-    } finally {
       setLoading(false);
     }
   };

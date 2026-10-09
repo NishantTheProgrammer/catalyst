@@ -50,9 +50,10 @@ def refresh_summary():
     run_summary_refresh()
     return {"status": "Summary refresh completed"}
 
+from fastapi.responses import StreamingResponse
+
 @router.post("/chat")
 def chat(request: ChatRequest):
-    """Query the RAG pipeline for insights on the current tickets"""
+    """Query the RAG pipeline for insights on the current tickets using streaming"""
     from rag import query_rag
-    answer = query_rag(request.query, request.history)
-    return {"answer": answer}
+    return StreamingResponse(query_rag(request.query, request.history), media_type="text/plain")
