@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Ticket } from "@/types";
 import { CalendarDays, TrendingUp, BarChart2, Activity, ShieldAlert, Target, TrendingDown } from "lucide-react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { BarChart, Bar, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { useSprintStats } from '@/hooks/useDashboardStats';
 
 type SprintDashboardProps = {
@@ -9,9 +9,12 @@ type SprintDashboardProps = {
   syncing: boolean;
   processing: boolean;
   colors: string[];
+  sprintNames: string[];
+  selectedSprint: string;
+  onSprintChange: (sprint: string) => void;
 };
 
-export default function SprintDashboard({ tickets, colors }: SprintDashboardProps) {
+export default function SprintDashboard({ tickets, colors, sprintNames, selectedSprint, onSprintChange }: SprintDashboardProps) {
   // Aggregate data by Sprint
   const sprintData = useMemo(() => {
     const dataBySprint: Record<string, any> = {};
@@ -54,7 +57,61 @@ export default function SprintDashboard({ tickets, colors }: SprintDashboardProp
   }, [tickets]);
 
   const { formattedData, categoryList } = sprintData;
-  const { sprintSeverityData, bugCriticalityData, sprintHealthScores, crossSprintRadarData, radarSprintNames } = useSprintStats(tickets);
+  const { sprintSeverityData, bugCriticalityData, sprintHealthScores, crossSprintRadarData, radarSprintNames, sprintLineData, sprintNames: hookSprintNames } = useSprintStats(tickets);
+
+  const selectedTickets = tickets.filter(t => (t.sprint || 'Backlog') === selectedSprint);
+
+  const individualSeverityData = selectedTickets.map(t => {
+    let score = 40;
+    if (t.issue_type === 'Bug' && t.bug_analysis) {
+      if (t.bug_analysis.severity === 'P0-Critical') score = 100;
+      else if (t.bug_analysis.severity === 'P1-High') score = 75;
+      else if (t.bug_analysis.severity === 'P2-Medium') score = 50;
+      else score = 25;
+    } else {
+      const p = (t.priority || 'Medium').toLowerCase();
+      if (p === 'critical' || p === 'highest') score = 75;
+      else if (p === 'high') score = 60;
+      else if (p === 'low' || p === 'lowest') score = 20;
+    }
+    return { ticket: t.jira_id, title: t.title.substring(0, 30), severityScore: score, type: t.issue_type };
+  }).sort((a, b) => b.severityScore - a.severityScore);
+
+  const individualCriticalityData = selectedTickets.map(t => {
+    let score = 40;
+    if (t.issue_type === 'Bug' && t.bug_analysis) {
+      if (t.bug_analysis.severity === 'P0-Critical') score = 100;
+      else if (t.bug_analysis.severity === 'P1-High') score = 75;
+      else if (t.bug_analysis.severity === 'P2-Medium') score = 50;
+      else score = 25;
+    } else {
+      const p = (t.priority || 'Medium').toLowerCase();
+      if (p === 'critical' || p === 'highest') score = 75;
+      else if (p === 'high') score = 60;
+      else if (p === 'low' || p === 'lowest') score = 20;
+    }
+    if ((t.timeline_deviation_days ?? 0) > 7) score = Math.min(100, score + 20);
+    else if ((t.timeline_deviation_days ?? 0) > 0) score = Math.min(100, score + 10);
+    if ((t.bounce_count || 0) > 2) score = Math.min(100, score + 15);
+    return {
+      ticket: t.jira_id,
+      title: t.title.substring(0, 30),
+      criticalityScore: score,
+      deviation: t.timeline_deviation_days ?? 0,
+      bounces: t.bounce_count || 0
+    };
+  }).sort((a, b) => b.criticalityScore - a.criticalityScore);
+
+  const bounceData = selectedTickets
+    .filter(t => (t.bounce_count || 0) > 0)
+    .map(t => ({
+      ticket: t.jira_id,
+      title: t.title.substring(0, 25),
+      bounceCount: t.bounce_count || 0,
+      status: t.status,
+      type: t.issue_type
+    }))
+    .sort((a, b) => b.bounceCount - a.bounceCount);
 
   if (formattedData.length === 0) {
     return (
@@ -66,6 +123,22 @@ export default function SprintDashboard({ tickets, colors }: SprintDashboardProp
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-4 bg-card/50 p-4 rounded-2xl border border-border backdrop-blur-xl">
+        <span className="text-sm text-muted-foreground font-medium whitespace-nowrap">Drill-down Sprint:</span>
+        <select
+          value={selectedSprint}
+          onChange={e => onSprintChange(e.target.value)}
+          className="bg-secondary/30 border border-border px-3 py-2 rounded-lg text-white text-sm outline-none focus:border-primary transition-colors appearance-none cursor-pointer"
+        >
+          {sprintNames.map(s => (
+            <option key={s} value={s} className="bg-slate-900 text-white">{s}</option>
+          ))}
+        </select>
+        <span className="text-xs text-muted-foreground">
+          Showing {selectedTickets.length} tickets — individual severity, criticality & bounce analysis
+        </span>
+      </div>
+
       <div className="flex items-center justify-between bg-card/50 p-6 rounded-2xl border border-border backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-primary/10 rounded-xl">
@@ -248,6 +321,135 @@ export default function SprintDashboard({ tickets, colors }: SprintDashboardProp
               <Legend />
               <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
             </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Individual Ticket Severity */}
+      <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+        <h3 className="text-xl font-semibold flex items-center gap-2">
+          <ShieldAlert className="w-5 h-5 text-orange-400" />
+          Ticket Severity — {selectedSprint}
+          <span className="text-xs text-muted-foreground font-normal ml-2">Y: severity score (0–100) · X: individual tickets</span>
+        </h3>
+        <div className="h-[280px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={individualSeverityData} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="ticket" stroke="rgba(255,255,255,0.4)" fontSize={10} angle={-35} textAnchor="end" tickMargin={5} />
+              <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.4)" fontSize={12} />
+              <RechartsTooltip
+                contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                formatter={(value: any, name: any, props: any) => [value, `${props.payload.type} — ${props.payload.title}`]}
+              />
+              <Bar dataKey="severityScore" name="Severity Score" radius={[4, 4, 0, 0]}>
+                {individualSeverityData.map((entry) => (
+                  <Cell
+                    key={entry.ticket}
+                    fill={entry.severityScore >= 90 ? '#ef4444' : entry.severityScore >= 70 ? '#f97316' : entry.severityScore >= 45 ? '#eab308' : '#22c55e'}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Individual Ticket Criticality */}
+      <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+        <h3 className="text-xl font-semibold flex items-center gap-2">
+          <Target className="w-5 h-5 text-red-400" />
+          Ticket Criticality — {selectedSprint}
+          <span className="text-xs text-muted-foreground font-normal ml-2">composite: severity + timeline deviation + bounces</span>
+        </h3>
+        <div className="h-[280px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={individualCriticalityData} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="ticket" stroke="rgba(255,255,255,0.4)" fontSize={10} angle={-35} textAnchor="end" tickMargin={5} />
+              <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.4)" fontSize={12} />
+              <RechartsTooltip
+                contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                formatter={(value: any, name: any, props: any) => [`${value} (dev ${props.payload.deviation}d, bounced ${props.payload.bounces}x)`, props.payload.title]}
+              />
+              <Bar dataKey="criticalityScore" name="Criticality Score" radius={[4, 4, 0, 0]}>
+                {individualCriticalityData.map((entry) => (
+                  <Cell
+                    key={entry.ticket}
+                    fill={entry.criticalityScore >= 85 ? '#dc2626' : entry.criticalityScore >= 65 ? '#f97316' : entry.criticalityScore >= 45 ? '#eab308' : '#22c55e'}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* To-and-Fro Tracker */}
+      {bounceData.length > 0 ? (
+        <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <TrendingDown className="w-5 h-5 text-rose-400" />
+            To-and-Fro Tracker — {selectedSprint}
+            <span className="text-xs text-muted-foreground font-normal ml-2">tickets bouncing between Dev ↔ QA</span>
+          </h3>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={bounceData} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                <XAxis type="number" stroke="rgba(255,255,255,0.4)" fontSize={12} allowDecimals={false} label={{ value: 'Bounce Count', position: 'insideBottom', offset: -2, fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} />
+                <YAxis type="category" dataKey="ticket" stroke="rgba(255,255,255,0.4)" fontSize={10} width={55} />
+                <RechartsTooltip
+                  contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                  formatter={(value: any, name: any, props: any) => [`${value} bounces — ${props.payload.title}`, `Status: ${props.payload.status}`]}
+                />
+                <Bar dataKey="bounceCount" name="Dev↔QA Bounces" radius={[0, 4, 4, 0]}>
+                  {bounceData.map((entry) => (
+                    <Cell
+                      key={entry.ticket}
+                      fill={entry.bounceCount >= 4 ? '#ef4444' : entry.bounceCount >= 2 ? '#f97316' : '#eab308'}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      ) : (
+        <div className="glass-panel p-5 rounded-2xl border border-border flex items-center gap-3 text-muted-foreground">
+          <TrendingDown className="w-5 h-5 text-emerald-400" />
+          <span className="text-sm">No to-and-fro bouncing detected in <strong className="text-white">{selectedSprint}</strong> — all tickets are moving forward cleanly.</span>
+        </div>
+      )}
+
+      {/* Sprint-to-Sprint Line Comparison */}
+      <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
+        <h3 className="text-xl font-semibold flex items-center gap-2">
+          <Activity className="w-5 h-5 text-blue-400" />
+          Sprint-to-Sprint Metric Comparison
+          <span className="text-xs text-muted-foreground font-normal ml-2">one colored line per sprint across all metrics</span>
+        </h3>
+        <div className="h-[320px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={sprintLineData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="metric" stroke="rgba(255,255,255,0.4)" fontSize={11} tickMargin={10} />
+              <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.4)" fontSize={12} />
+              <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+              <Legend />
+              {hookSprintNames.map((sprintName, index) => (
+                <Line
+                  key={sprintName}
+                  type="monotone"
+                  dataKey={sprintName}
+                  name={sprintName}
+                  stroke={colors[index % colors.length]}
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              ))}
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>

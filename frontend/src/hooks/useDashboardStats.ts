@@ -208,7 +208,66 @@ export function useSprintStats(tickets: Ticket[]) {
       return row;
     });
 
+    const sprintNames = sorted.map(d => d.sprint);
+    const lineMetrics = ['Avg Severity', 'Avg Criticality', 'Bug Rate %', 'Avg Quality', 'Bounce Rate %'];
+
+    const sprintLineData = lineMetrics.map(metric => {
+      const row: Record<string, string | number> = { metric };
+      sorted.forEach(d => {
+        const avgQ = d.qualityCount > 0 ? d.qualitySum / d.qualityCount : 0;
+        const bugRate = d.total > 0 ? (d.totalBugs / d.total) * 100 : 0;
+        const allTicketsInSprint = tickets.filter(t => (t.sprint || 'Backlog') === d.sprint);
+        const avgBounce = allTicketsInSprint.length > 0
+          ? (allTicketsInSprint.reduce((sum, t) => sum + (t.bounce_count || 0), 0) / allTicketsInSprint.length) * 100
+          : 0;
+        const avgSeverity = (() => {
+          const sev = allTicketsInSprint.map(t => {
+            if (t.issue_type === 'Bug' && t.bug_analysis) {
+              if (t.bug_analysis.severity === 'P0-Critical') return 100;
+              if (t.bug_analysis.severity === 'P1-High') return 75;
+              if (t.bug_analysis.severity === 'P2-Medium') return 50;
+              return 25;
+            }
+            const p = (t.priority || 'Medium').toLowerCase();
+            if (p === 'critical' || p === 'highest') return 75;
+            if (p === 'high') return 60;
+            if (p === 'low' || p === 'lowest') return 20;
+            return 40;
+          });
+          return sev.length > 0 ? Math.round(sev.reduce((a, b) => a + b, 0) / sev.length) : 0;
+        })();
+        const avgCriticality = (() => {
+          const crit = allTicketsInSprint.map(t => {
+            let score = 0;
+            if (t.issue_type === 'Bug' && t.bug_analysis) {
+              if (t.bug_analysis.severity === 'P0-Critical') score = 100;
+              else if (t.bug_analysis.severity === 'P1-High') score = 75;
+              else if (t.bug_analysis.severity === 'P2-Medium') score = 50;
+              else score = 25;
+            } else {
+              const p = (t.priority || 'Medium').toLowerCase();
+              if (p === 'critical' || p === 'highest') score = 75;
+              else if (p === 'high') score = 60;
+              else if (p === 'low' || p === 'lowest') score = 20;
+              else score = 40;
+            }
+            if ((t.timeline_deviation_days ?? 0) > 7) score = Math.min(100, score + 20);
+            else if ((t.timeline_deviation_days ?? 0) > 0) score = Math.min(100, score + 10);
+            if ((t.bounce_count || 0) > 2) score = Math.min(100, score + 15);
+            return score;
+          });
+          return crit.length > 0 ? Math.round(crit.reduce((a, b) => a + b, 0) / crit.length) : 0;
+        })();
+        if (metric === 'Avg Severity')     row[d.sprint] = avgSeverity;
+        if (metric === 'Avg Criticality')  row[d.sprint] = avgCriticality;
+        if (metric === 'Bug Rate %')       row[d.sprint] = Math.round(bugRate);
+        if (metric === 'Avg Quality')      row[d.sprint] = Math.round(avgQ);
+        if (metric === 'Bounce Rate %')    row[d.sprint] = Math.round(avgBounce);
+      });
+      return row;
+    });
+
     return { sprintSeverityData, bugCriticalityData, sprintHealthScores,
-             crossSprintRadarData, radarSprintNames };
+             crossSprintRadarData, radarSprintNames, sprintLineData, sprintNames };
   }, [tickets]);
 }

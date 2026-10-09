@@ -39,6 +39,14 @@ export type Ticket = {
   sprint_start: string | null;
   sprint_end: string | null;
   created_date: string;
+  resolution_date: string | null;
+  due_date: string | null;
+  parent_story_key: string | null;
+  comment_count: number;
+  comments_text: string;
+  status_history: { from: string; to: string; at: string }[];
+  bounce_count: number;
+  timeline_deviation_days: number | null;
   link: string;
   is_processed: boolean;
   analysis: AnalysisResult | null;
