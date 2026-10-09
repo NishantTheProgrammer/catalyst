@@ -202,8 +202,9 @@ def test_llm_connection(req: LLMTestRequest, session: Session = Depends(get_sess
 @router.post("/reset")
 def reset_data(session: Session = Depends(get_session)):
     from sqlmodel import delete
-    from models import Ticket, AnalysisResult, ProjectSummary, TicketQuality
+    from models import Ticket, AnalysisResult, ProjectSummary, TicketQuality, BugAnalysis
     try:
+        session.exec(delete(BugAnalysis))
         session.exec(delete(TicketQuality))
         session.exec(delete(AnalysisResult))
         session.exec(delete(Ticket))
