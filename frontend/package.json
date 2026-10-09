@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "lightningcss": "^1.33.0",
     "lucide-react": "^1.48.0",
     "next": "15.1.0",
     "react": "19.2.8",
@@ -26,7 +25,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.1.0",
-    "lightningcss-darwin-arm64": "^1.33.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
