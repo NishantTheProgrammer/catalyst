@@ -30,7 +30,8 @@ def build_vector_store():
     global vectorstore
     docs = []
     with Session(engine) as session:
-        tickets = session.exec(select(Ticket).where(Ticket.is_processed == True)).all()
+        from crud import get_tickets_eager
+        tickets = get_tickets_eager(session, processed_only=True)
         
         for t in tickets:
             content = f"Ticket Title: {t.title}\nDescription: {t.description}\n"
@@ -70,7 +71,8 @@ def build_vector_store():
         print("No processed tickets to build vector store.")
 
 def get_global_metrics(session: Session) -> str:
-    tickets = session.exec(select(Ticket)).all()
+    from crud import get_tickets_eager
+    tickets = get_tickets_eager(session)
     total = len(tickets)
     processed = sum(1 for t in tickets if t.is_processed)
     

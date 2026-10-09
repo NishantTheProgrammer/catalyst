@@ -228,7 +228,8 @@ def get_summary(session: Session = Depends(get_session)):
 @router.get("/tickets")
 def get_tickets(session: Session = Depends(get_session)):
     """Fetch all tickets to display on the frontend"""
-    tickets = session.exec(select(Ticket).order_by(Ticket.id.desc())).all()
+    from crud import get_tickets_eager
+    tickets = get_tickets_eager(session)
     jira_base = os.getenv("JIRA_URL", "https://jira.com").rstrip('/')
     
     response = []

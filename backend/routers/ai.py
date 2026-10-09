@@ -32,7 +32,8 @@ def run_summary_refresh():
     from database import engine
     
     with Session(engine) as session:
-        tickets = session.exec(select(Ticket).where(Ticket.is_processed == True)).all()
+        from crud import get_tickets_eager
+        tickets = get_tickets_eager(session, processed_only=True)
         if not tickets:
             return
             
