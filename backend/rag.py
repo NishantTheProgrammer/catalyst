@@ -105,28 +105,27 @@ def stream_rag(query: str, history: list = None):
     if not vectorstore:
         build_vector_store()
         
-    if not vectorstore:
+    context = ""
+    api_error = False
+    
+    if vectorstore:
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+        relevant_docs = retriever.invoke(query)
+        
+        context_chunks = []
+        for d in relevant_docs:
+            doc_type = d.metadata.get("type", "ticket")
+            prefix = "<documentation>" if doc_type == "documentation" else "<ticket>"
+            suffix = "</documentation>" if doc_type == "documentation" else "</ticket>"
+            context_chunks.append(f"{prefix}\n{d.page_content}\n{suffix}")
+            
+        context = "\n\n".join(context_chunks)
+    else:
         # Check if it failed because of API error or empty DB
         with Session(engine) as session:
             from crud import get_tickets_eager
             if get_tickets_eager(session, processed_only=True):
-                yield "Failed to connect to the Gemini Embeddings API (likely a 429 Rate Limit from processing tickets). Please wait 60 seconds and try again."
-                return
-            
-        yield "No ticket data available to search. Please process some tickets first."
-        return
-        
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-    relevant_docs = retriever.invoke(query)
-    
-    context_chunks = []
-    for d in relevant_docs:
-        doc_type = d.metadata.get("type", "ticket")
-        prefix = "<documentation>" if doc_type == "documentation" else "<ticket>"
-        suffix = "</documentation>" if doc_type == "documentation" else "</ticket>"
-        context_chunks.append(f"{prefix}\n{d.page_content}\n{suffix}")
-        
-    context = "\n\n".join(context_chunks)
+                api_error = True
     
     with Session(engine) as session:
         global_metrics = get_global_metrics(session)
@@ -142,13 +141,18 @@ def stream_rag(query: str, history: list = None):
 - To fetch/load tickets: Click the "Sync Jira" button.
 - To refresh insights: Click the refresh icon on the Insights panel.
 </dashboard_instructions>
+"""
+    
+    if api_error:
+        system_prompt += "\n<system_alert>\nThe Gemini Embeddings API failed to load the vector store (likely a rate limit or API key issue). Inform the user you cannot search specific tickets right now, but you can answer general questions.\n</system_alert>\n"
+    elif context:
+        system_prompt += f"\n<context>\n{context}\n</context>\n"
+    else:
+        system_prompt += "\n<context>\nNo tickets have been processed by AI yet. If the user asks about specific tickets, politely tell them to click 'Run AI Analysis' first.\n</context>\n"
 
-<context>
-{context}
-</context>
-
+    system_prompt += """
 INSTRUCTIONS:
-1. Answer the user's question using ONLY the data provided in <context> and <dashboard_metrics>.
+1. Answer the user's question using ONLY the data provided in <context>, <dashboard_metrics>, and <dashboard_instructions>.
 2. Be extremely brief, direct, and concise. Do not add conversational filler or summaries.
 3. If the user greets you, reply EXACTLY with: "Hello! How can I help you with your Catelyst dashboard today?"
 """
