@@ -55,9 +55,34 @@ export default function TicketList({
       
       <div className="w-full overflow-x-auto">
         {loading ? (
-          <div className="flex justify-center py-12">
-            <RefreshCw className="w-8 h-8 text-primary animate-spin opacity-50" />
-          </div>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-white/10 text-sm text-muted-foreground bg-white/[0.01]">
+                <th className="py-4 px-6 font-medium whitespace-nowrap">Ticket</th>
+                <th className="py-4 px-6 font-medium whitespace-nowrap">Project</th>
+                <th className="py-4 px-6 font-medium whitespace-nowrap">Type</th>
+                <th className="py-4 px-6 font-medium">Title</th>
+                <th className="py-4 px-6 font-medium whitespace-nowrap">Sprint</th>
+                <th className="py-4 px-6 font-medium whitespace-nowrap">Category</th>
+                <th className="py-4 px-6 font-medium whitespace-nowrap">Quality</th>
+                <th className="py-4 px-6 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...Array(5)].map((_, i) => (
+                <tr key={i} className="border-b border-white/5">
+                  <td className="py-4 px-6"><div className="h-6 w-20 bg-white/10 rounded animate-pulse"></div></td>
+                  <td className="py-4 px-6"><div className="h-4 w-12 bg-white/10 rounded animate-pulse"></div></td>
+                  <td className="py-4 px-6"><div className="h-6 w-16 bg-white/10 rounded animate-pulse"></div></td>
+                  <td className="py-4 px-6"><div className="h-4 w-48 sm:w-64 bg-white/10 rounded animate-pulse"></div></td>
+                  <td className="py-4 px-6"><div className="h-6 w-20 bg-white/10 rounded animate-pulse"></div></td>
+                  <td className="py-4 px-6"><div className="h-5 w-24 bg-white/10 rounded animate-pulse"></div></td>
+                  <td className="py-4 px-6"><div className="h-6 w-16 bg-white/10 rounded animate-pulse"></div></td>
+                  <td className="py-4 px-6 text-right"><div className="h-6 w-6 bg-white/10 rounded animate-pulse ml-auto"></div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : (() => {
           const displayedTickets = tickets.filter(t => {
             let match = true;

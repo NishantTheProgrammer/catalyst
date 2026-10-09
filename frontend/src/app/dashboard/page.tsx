@@ -31,6 +31,7 @@ export default function DashboardPage() {
   return (
     <>
       <KPIStats 
+        loading={loading}
         syncing={syncing}
         processing={processing}
         totalTickets={tickets.length}

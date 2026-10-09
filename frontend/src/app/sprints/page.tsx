@@ -7,7 +7,7 @@ import { useDashboard } from "@/context/DashboardContext";
 const COLORS = ['#f43f5e', '#3b82f6', '#fbbf24', '#10b981', '#a855f7', '#64748b'];
 
 export default function SprintsPage() {
-  const { tickets, syncing, processing } = useDashboard();
+  const { tickets, syncing, processing, loading } = useDashboard();
 
   const sprintNames = useMemo(() => {
     const names = Array.from(new Set(tickets.map(t => t.sprint || 'Backlog'))).sort();
@@ -19,6 +19,7 @@ export default function SprintsPage() {
 
   return (
     <SprintDashboard
+      loading={loading}
       tickets={tickets}
       syncing={syncing}
       processing={processing}

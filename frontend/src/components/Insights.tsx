@@ -38,34 +38,45 @@ export default function Insights({ summary, tickets, processing, handleProcess }
         </div>
         
         <div className="text-lg text-muted-foreground leading-relaxed">
-          <ReactMarkdown
-            components={{
-              h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-foreground mt-6 mb-4" {...props} />,
-              h2: ({node, ...props}) => <h2 className="text-xl font-bold text-foreground mt-5 mb-3" {...props} />,
-              h3: ({node, ...props}) => <h3 className="text-lg font-bold text-foreground mt-4 mb-2" {...props} />,
-              p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
-              ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 space-y-2 marker:text-primary" {...props} />,
-              ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4 space-y-2 marker:text-primary" {...props} />,
-              li: ({node, ...props}) => <li className="" {...props} />,
-              strong: ({node, ...props}) => <strong className="font-semibold text-foreground" {...props} />,
-              a: ({node, ...props}) => <a className="text-primary hover:underline" {...props} />,
-              blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic opacity-80" {...props} />,
-              code: ({node, className, children, ...props}) => {
-                const match = /language-(\w+)/.exec(className || '')
-                return !match ? (
-                  <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground" {...props}>
-                    {children}
-                  </code>
-                ) : (
-                  <code className="block bg-muted p-4 rounded-lg text-sm font-mono text-foreground overflow-x-auto mb-4" {...props}>
-                    {children}
-                  </code>
-                )
-              }
-            }}
-          >
-            {(summary.summary_text || "No insights available yet. Please run AI analysis on your tickets.").replace(/\\n/g, '\n')}
-          </ReactMarkdown>
+          {processing ? (
+            <div className="flex flex-col gap-3 mt-4">
+              <div className="h-4 bg-white/10 rounded w-full animate-pulse"></div>
+              <div className="h-4 bg-white/10 rounded w-[90%] animate-pulse"></div>
+              <div className="h-4 bg-white/10 rounded w-[95%] animate-pulse"></div>
+              <div className="h-4 bg-white/10 rounded w-[80%] animate-pulse"></div>
+              <div className="h-4 bg-white/10 rounded w-[60%] animate-pulse mt-4"></div>
+              <div className="h-4 bg-white/10 rounded w-[85%] animate-pulse"></div>
+            </div>
+          ) : (
+            <ReactMarkdown
+              components={{
+                h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-foreground mt-6 mb-4" {...props} />,
+                h2: ({node, ...props}) => <h2 className="text-xl font-bold text-foreground mt-5 mb-3" {...props} />,
+                h3: ({node, ...props}) => <h3 className="text-lg font-bold text-foreground mt-4 mb-2" {...props} />,
+                p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
+                ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 space-y-2 marker:text-primary" {...props} />,
+                ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4 space-y-2 marker:text-primary" {...props} />,
+                li: ({node, ...props}) => <li className="" {...props} />,
+                strong: ({node, ...props}) => <strong className="font-semibold text-foreground" {...props} />,
+                a: ({node, ...props}) => <a className="text-primary hover:underline" {...props} />,
+                blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic opacity-80" {...props} />,
+                code: ({node, className, children, ...props}) => {
+                  const match = /language-(\w+)/.exec(className || '')
+                  return !match ? (
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground" {...props}>
+                      {children}
+                    </code>
+                  ) : (
+                    <code className="block bg-muted p-4 rounded-lg text-sm font-mono text-foreground overflow-x-auto mb-4" {...props}>
+                      {children}
+                    </code>
+                  )
+                }
+              }}
+            >
+              {(summary.summary_text || "No insights available yet. Please run AI analysis on your tickets.").replace(/\\n/g, '\n')}
+            </ReactMarkdown>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">

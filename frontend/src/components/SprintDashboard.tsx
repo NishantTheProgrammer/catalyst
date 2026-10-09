@@ -5,6 +5,7 @@ import { BarChart, Bar, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 import { useSprintStats } from '@/hooks/useDashboardStats';
 
 type SprintDashboardProps = {
+  loading?: boolean;
   tickets: Ticket[];
   syncing: boolean;
   processing: boolean;
@@ -14,7 +15,7 @@ type SprintDashboardProps = {
   onSprintChange: (sprint: string) => void;
 };
 
-export default function SprintDashboard({ tickets, colors, sprintNames, selectedSprint, onSprintChange }: SprintDashboardProps) {
+export default function SprintDashboard({ loading, tickets, colors, sprintNames, selectedSprint, onSprintChange }: SprintDashboardProps) {
   // Aggregate data by Sprint
   const sprintData = useMemo(() => {
     const dataBySprint: Record<string, any> = {};
@@ -114,8 +115,16 @@ export default function SprintDashboard({ tickets, colors, sprintNames, selected
     .sort((a, b) => b.bounceCount - a.bounceCount);
 
   if (formattedData.length === 0) {
+    if (loading) {
+      return (
+        <div className="bg-card/50 p-12 rounded-2xl border border-border flex flex-col items-center justify-center text-center backdrop-blur-xl min-h-[400px]">
+          <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+          <p className="text-muted-foreground">Loading sprint metrics...</p>
+        </div>
+      );
+    }
     return (
-      <div className="bg-card/50 p-12 rounded-2xl border border-border flex flex-col items-center justify-center text-center backdrop-blur-xl">
+      <div className="bg-card/50 p-12 rounded-2xl border border-border flex flex-col items-center justify-center text-center backdrop-blur-xl min-h-[400px]">
         <p className="text-muted-foreground">No sprint data available. Sync tickets to start.</p>
       </div>
     );
