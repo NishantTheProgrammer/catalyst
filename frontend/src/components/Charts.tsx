@@ -32,6 +32,19 @@ type ChartsProps = {
   colors: string[];
 };
 
+const getQualityColor = (name: string, index: number = 0): string => {
+  const lower = (name || '').toLowerCase();
+  if (lower.includes('excellent')) return '#10b981'; // Emerald Green
+  if (lower.includes('good')) return '#38bdf8';      // Sky Blue
+  if (lower.includes('fair')) return '#fbbf24';      // Amber Yellow
+  if (lower.includes('poor')) return '#f97316';      // Coral Orange
+  if (lower.includes('inadequate') || lower.includes('critical')) return '#f43f5e'; // Rose Red
+  if (lower.includes('needs')) return '#fbbf24';     // Amber fallback for Needs Clarification
+  
+  const palette = ['#10b981', '#38bdf8', '#fbbf24', '#f97316', '#f43f5e', '#a855f7'];
+  return palette[index % palette.length];
+};
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -90,7 +103,12 @@ export default function Charts({
           {selectedQuality && (
             <button
               onClick={() => setSelectedQuality(null)}
-              className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/15 border border-emerald-500/25 px-2.5 py-1 rounded-full flex items-center gap-1 cursor-pointer hover:bg-emerald-500/25 transition-colors"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 cursor-pointer transition-colors"
+              style={{
+                color: getQualityColor(selectedQuality),
+                backgroundColor: `${getQualityColor(selectedQuality)}1f`,
+                border: `1px solid ${getQualityColor(selectedQuality)}40`,
+              }}
             >
               <Filter className="w-3 h-3" />
               <span>{selectedQuality} (clear)</span>
@@ -109,11 +127,12 @@ export default function Charts({
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                 {qualityDistribution.map((entry, index) => {
                   const isSelected = selectedQuality === entry.name;
+                  const barColor = getQualityColor(entry.name, index);
                   return (
                     <Cell
                       key={`cell-${index}`}
                       cursor="pointer"
-                      fill={entry.name.includes('Excellent') ? '#10b981' : entry.name.includes('Good') ? '#38bdf8' : entry.name.includes('Needs') ? '#fbbf24' : '#f43f5e'}
+                      fill={barColor}
                       onClick={() => setSelectedQuality(isSelected ? null : entry.name)}
                       style={{
                         opacity: selectedQuality && !isSelected ? 0.3 : 1,
